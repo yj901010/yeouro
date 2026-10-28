@@ -1,0 +1,7 @@
+node_modules/
+.openai/
+*.zip
+.DS_Store
+coverage/
+.env
+.env.*
