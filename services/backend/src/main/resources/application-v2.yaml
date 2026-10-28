@@ -1,0 +1,18 @@
+# Local PostgreSQL validation profile; issuer/JWKS must be configured for phone access.
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/yeouro}
+    username: ${DATABASE_USERNAME:yeouro}
+    password: ${DATABASE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    locations: classpath:db/migration,classpath:db/v2
+yeouro:
+  v1:
+    enabled: false
+  v2:
+    enabled: true
+    auth:
+      issuer: ${PHONE_JWT_ISSUER:}
+      jwk-set-uri: ${PHONE_JWT_JWKS_URI:}
+      audience: ${PHONE_JWT_AUDIENCE:authenticated}

@@ -1,7 +1,24 @@
-# Requires a private PostgreSQL service and external TLS termination. Not deployed.
+# External environment only; deployment/TLS/database grants have NOT been validated.
+# Legacy anonymous v1 endpoints are never enabled by this profile.
 spring:
   datasource:
     url: ${DATABASE_URL}
     username: ${DATABASE_USERNAME}
     password: ${DATABASE_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+  flyway:
+    locations: classpath:db/migration,classpath:db/v2
+    user: ${MIGRATION_DATABASE_USERNAME:${DATABASE_USERNAME}}
+    password: ${MIGRATION_DATABASE_PASSWORD:${DATABASE_PASSWORD}}
+yeouro:
+  v1:
+    enabled: false
+  v2:
+    enabled: true
+    demo-enabled: false
+    auth:
+      issuer: ${PHONE_JWT_ISSUER:}
+      jwk-set-uri: ${PHONE_JWT_JWKS_URI:}
+      audience: ${PHONE_JWT_AUDIENCE:authenticated}

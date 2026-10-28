@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="yeouro.v1.enabled",havingValue="true",matchIfMissing=true)
 @RestController @RequestMapping("/api/v1")
 public class TripController {
     private final TripService trips;

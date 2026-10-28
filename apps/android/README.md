@@ -82,3 +82,13 @@ YEOURO_TEST_BASE_URL=http://127.0.0.1:8080/ \
 ## 검증 범위
 
 자동화: 역할/동의 검사, 중복 클릭 단일 처리, 버전 역행 방지, 주행 잠금, DEMO/실제 적용 분리, 명시적 위치 전송, 생명주기 polling 취소, 세션 삭제/철회, HTTP DTO/인증/오류/취소/재전송 방지. 기기/에뮬레이터 실제 Compose 상호작용, 접근성 및 Pleos 실기 동작은 별도 QA가 필요합니다.
+
+## Additive v2 phone API adapter
+
+`core-network/kr.yeouro.network.v2` contains separate v2 wire models and `V2PhoneRepository` for account-authenticated trip creation/read/plan replacement, sharing/invite/join, readiness, proposal discovery/decision and lifecycle requests. A `PhoneAccessTokenProvider` supplies a current access JWT; this code does not create an account, persist secrets, implement a Supabase login UI or invent a development token.
+
+The existing phone and vehicle screens remain on the v1 capability-session repository. Do not swap repositories without implementing sign-in, restoring memberships, role/consent projections, cancellation, cache clearing on 401/403 and lifecycle behavior. The v2 join response is a membership, not a v1 SessionResponse or a newly issued phone token. Vehicle pairing is a separate credential flow, not implemented by this phone adapter.
+
+The v2 transport refuses unsafe release endpoints, does not follow redirects or automatically retry mutations, carries explicit idempotency keys and plan ETags, and propagates auth/conflict errors. Nine focused MockWebServer tests validate the boundary. They do not establish a working login screen, a native vehicle UI, or live Supabase/Pleos integration.
+
+The opt-in `LiveV2BackendTest` is a separate real Kotlin→HTTP→PostgreSQL check with temporary signed JWTs. From the repository root after packaging the backend, run `PG_BIN=/path/to/postgresql/bin scripts/run-postgres-tests.sh -- python3 /absolute/path/to/yeouro/scripts/smoke-native-v2.py`. The Python harness requires `cryptography`, starts only loopback test servers and an in-memory signing-key fixture, and runs both v1/v2 native tests. It never connects to a Supabase account and does not install or launch an APK.

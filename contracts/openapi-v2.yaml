@@ -1,0 +1,3588 @@
+openapi: 3.0.3
+info:
+  title: Yeouro implemented v2 API
+  version: 0.2.0
+  description: 'Implemented local PostgreSQL v2 slice, opt-in via yeouro.v2.enabled. No deployment or real SDK/provider
+    integration implied. Separate from unchanged v1. Phone JWT signature, issuer, expiry and audience validation
+    require configured issuer/JWKS; no anonymous fallback. All examples synthetic, timestamps illustrative (replace
+    with fresh times). POST requires Idempotency-Key (1..128 chars): 24h principal+route scope, canonical payload
+    conflict 409, access rechecked before replay. Secret issuance replays 409 SECRET_ALREADY_ISSUED. Full privacy
+    and implementation differences: docs/v2/API_CONTRACT.md. Only listed paths exist; no account deletion, outcome
+    reconciliation or refresh endpoint.'
+servers:
+- url: /api/v2
+  description: Same-origin v2 API; local implementation, use HTTPS for any authorized external deployment.
+paths:
+  /trips/{tripId}/sharing-sessions:
+    post:
+      operationId: startSharing
+      summary: Owner starts a new sharing generation
+      security:
+      - PhoneJwt: []
+      responses:
+        '201':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharingSession'
+              example:
+                sessionId: 11111111-1111-4111-8111-111111111111
+                generation: 1
+                expiresAt: '2026-10-28T09:00:00Z'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRequest'
+            example:
+              scopes:
+              - TRIP_COLLABORATION
+              - LOCATION_PUBLISH
+              - LOCATION_VIEW
+              consentPolicyVersion: v1
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: &id001
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/invites:
+    post:
+      operationId: issueInvite
+      summary: Owner issues a single-use invite
+      security:
+      - PhoneJwt: []
+      responses:
+        '201':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invite'
+              example:
+                id: 11111111-1111-4111-8111-111111111111
+                code: Synthetic code
+                expiresAt: '2026-10-28T09:00:00Z'
+                role: DRIVER
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: Expires in at most 900 seconds and never beyond session. New issue revokes previous unconsumed
+        invites by this owner. DRIVER role rejected while an active driver exists. Same-key replay returns 409 SECRET_ALREADY_ISSUED;
+        raw code is not persisted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteRequest'
+            example:
+              role: COMPANION
+              sessionId: 11111111-1111-4111-8111-111111111111
+              expiresInSeconds: 900
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /invites/join:
+    post:
+      operationId: joinInvite
+      summary: Authenticated account consumes invite
+      security:
+      - PhoneJwt: []
+      responses:
+        '201':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Membership'
+              example:
+                tripId: 11111111-1111-4111-8111-111111111111
+                participantId: 11111111-1111-4111-8111-111111111111
+                role: DRIVER
+                sharingGeneration: 1
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: No phone token is issued. Same-key exact replay is allowed only while original membership/session
+        access remains authorized; changed payload conflicts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinRequest'
+            example:
+              code: synthetic-one-time-code
+              consentScopes:
+              - TRIP_COLLABORATION
+              - LOCATION_VIEW
+              consentPolicyVersion: v1
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/sharing/revoke:
+    post:
+      operationId: revokeSharing
+      summary: Owner revokes all sharing
+      security:
+      - PhoneJwt: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Revoked'
+              example:
+                sharingEnabled: false
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: Clears latest location, revokes invites and credentials, cancels pending commands; claimed execution
+        is preserved as OUTCOME_UNKNOWN, not assumed cancelled in the real world. Nonowner memberships become LEFT
+        and all participant consent versions increment. Restart requires new invitation + join for nonowners; previous
+        membership cannot directly regrant consent.
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/consents/me:
+    put:
+      operationId: updateOwnConsents
+      summary: Update own consent scopes
+      security:
+      - PhoneJwt: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consent'
+              example:
+                sessionId: 11111111-1111-4111-8111-111111111111
+                scopes: {}
+                version: 0
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentRequest'
+            example:
+              scopes:
+                LOCATION_VIEW: false
+              consentPolicyVersion: v1
+              expectedVersion: 0
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+      description: Only own scopes may be changed. Personal collaboration revocation retains membership in the same
+        sharing generation; recover current consent version through GET on this route if the PUT response was lost.
+        It does not revive revoked vehicle credentials. Global sharing revocation instead ends nonowner membership
+        and requires a new invitation/join.
+    get:
+      operationId: getOwnConsents
+      summary: Recover own consent state and version
+      description: Phone active member can read own consent after personal TRIP_COLLABORATION revoke or a lost consent
+        PUT response, without reading shared trip data. Requires an active sharing session. Global sharing revoke
+        sets nonowner memberships LEFT; those users cannot use this route to bypass fresh invitation and join into
+        a restarted generation. Vehicle credentials are not allowed.
+      security:
+      - PhoneJwt: []
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Own current-generation consent state
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnConsents'
+              example:
+                sessionId: 11111111-1111-4111-8111-111111111111
+                generation: 1
+                version: 2
+                scopes:
+                  TRIP_COLLABORATION: false
+                  LOCATION_VIEW: false
+                  LOCATION_PUBLISH: false
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      x-privacy: Own consent only; no-store; no other member information.
+  /trips/{tripId}/memberships/me:
+    delete:
+      operationId: leaveTrip
+      summary: Non-owner leaves own membership
+      security:
+      - PhoneJwt: []
+      responses:
+        '204':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: Owner must end or cancel instead. Leaving driver revokes vehicle credentials and pending work.
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/readiness/me:
+    put:
+      operationId: setReadiness
+      summary: Companion reports own readiness
+      security:
+      - PhoneJwt: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Readiness'
+              example:
+                participantId: 11111111-1111-4111-8111-111111111111
+                ready: false
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadinessRequest'
+            example:
+              ready: true
+              observedAt: '2026-10-28T09:00:00Z'
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/location:
+    put:
+      operationId: publishLocation
+      summary: Driver publishes latest observation
+      security:
+      - PhoneJwt: []
+      - VehicleBearer: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationMetadata'
+              example:
+                observationId: 11111111-1111-4111-8111-111111111111
+                receivedAt: '2026-10-28T09:00:00Z'
+                freshness: FRESH
+                ageSeconds: 0
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: Requires active sharing generation and LOCATION_PUBLISH consent/scope. Only latest point retained.
+        Same observationId + normalized payload replays metadata; changed payload 409 OBSERVATION_REUSED. Older
+        timestamps or age >120s/future >30s rejected. No Idempotency-Key needed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationRequest'
+            example:
+              observationId: 55555555-5555-4555-8555-555555555555
+              sharingGeneration: 1
+              latitude: 37.5
+              longitude: 127.0
+              accuracyMeters: 18
+              observedAt: '2026-10-28T09:00:00Z'
+              source: PHONE
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /vehicle-pairings:
+    post:
+      operationId: startPairing
+      summary: Create short-lived vehicle pairing challenge
+      security: []
+      responses:
+        '201':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairingIssued'
+              example:
+                pairingId: 11111111-1111-4111-8111-111111111111
+                displayCode: Synthetic displayCode
+                pollSecret: Synthetic pollSecret
+                expiresAt: '2026-10-28T09:00:00Z'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '429':
+          $ref: '#/components/responses/Error429'
+      description: Public local-development entry, five-minute challenge. Local per-installation/global budgets
+        are not production internet abuse protection. Same-key replay returns SECRET_ALREADY_ISSUED; start new pairing
+        on lost response. No Retry-After guarantee.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PairingRequest'
+            example:
+              installationId: 11111111-1111-4111-8111-111111111111
+              displayLabel: Synthetic demo vehicle
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /vehicle-pairings/{pairingId}/approve:
+    post:
+      operationId: approvePairing
+      summary: Current driver phone approves vehicle
+      security:
+      - PhoneJwt: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairingApproved'
+              example:
+                pairingId: 11111111-1111-4111-8111-111111111111
+                status: APPROVED
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PairingApprovalRequest'
+            example:
+              tripId: 11111111-1111-4111-8111-111111111111
+              displayCode: synthetic-display-code
+              scopes:
+              - TRIP_READ
+              - NAV_COMMAND_CLAIM
+              - NAV_RESULT_WRITE
+      parameters:
+      - name: pairingId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /vehicle-pairings/{pairingId}:
+    get:
+      operationId: pollPairing
+      summary: Poll status without account details
+      security:
+      - PairingPollSecret: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairingStatus'
+              example:
+                pairingId: 11111111-1111-4111-8111-111111111111
+                status: PENDING
+                expiresAt: '2026-10-28T09:05:00Z'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+      parameters:
+      - name: pairingId
+        in: path
+        required: true
+        schema: *id001
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /vehicle-pairings/{pairingId}/claim:
+    post:
+      operationId: claimPairingCredential
+      summary: Claim one-time vehicle credential
+      security:
+      - PairingPollSecret: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleCredential'
+              example:
+                pairingId: 11111111-1111-4111-8111-111111111111
+                tripId: 11111111-1111-4111-8111-111111111111
+                credential: Synthetic credential
+                expiresAt: '2026-10-28T09:00:00Z'
+                scopes: []
+                sharingGeneration: 1
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: Opaque credential max lifetime 12 hours, bounded by trip and sharing expiry. Lost claim response
+        requires new pairing, not refresh/replay. Never share phone JWT/refresh token with vehicle.
+      parameters:
+      - name: pairingId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/vehicle-pairings/{pairingId}:
+    delete:
+      operationId: revokePairing
+      summary: Owner or driver revokes vehicle pairing
+      security:
+      - PhoneJwt: []
+      responses:
+        '204':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - name: pairingId
+        in: path
+        required: true
+        schema: *id001
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/proposals:
+    post:
+      operationId: submitProposal
+      summary: Phone collaborator proposes a place
+      security:
+      - PhoneJwt: []
+      responses:
+        '201':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Proposal'
+              example:
+                id: 11111111-1111-4111-8111-111111111111
+                kind: DESTINATION
+                decisionStatus: PENDING
+                version: 0
+                place:
+                  name: Synthetic name
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: Any phone member with current collaboration consent may submit (not companion-only). comparisonId
+        is not implemented.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProposalRequest'
+            example:
+              kind: DESTINATION
+              place:
+                name: Synthetic concert hall
+                latitude: 37.5
+                longitude: 127.0
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+    get:
+      operationId: listProposals
+      summary: Discover proposals and command outcomes through foreground polling
+      description: Phone reader or vehicle TRIP_READ, with live trip, active sharing and the caller's TRIP_COLLABORATION
+        consent. OWNER alone does not bypass collaboration consent. Only current-generation proposals are visible.
+        Newest first; no arbitrary offset. Cross-trip or prior-generation cursor is 404. Expired command leases
+        are reflected as EXPIRED or OUTCOME_UNKNOWN, never inferred success. This is not an SDK result reconciliation
+        endpoint.
+      security:
+      - PhoneJwt: []
+      - VehicleBearer: []
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: &id002
+          type: string
+          format: uuid
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      - name: cursor
+        in: query
+        schema: *id002
+        description: Use nextCursor from previous page; omit to poll newest page.
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - PENDING
+          - ACCEPTED
+          - DISMISSED
+          - CANCELLED
+        description: Filter proposal decision state, not command execution outcome.
+      responses:
+        '200':
+          description: Current-generation proposal page
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalList'
+              example:
+                proposals:
+                - id: 33333333-3333-4333-8333-333333333333
+                  kind: DESTINATION
+                  decisionStatus: PENDING
+                  version: 0
+                  place:
+                    name: Synthetic concert hall
+                    latitude: 37.5
+                    longitude: 127.0
+                  navigationCommand: null
+                nextCursor: null
+                serverTime: '2026-10-28T09:00:00Z'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      x-privacy: no-store; current generation only; synthetic examples; redact precise locations
+  /trips/{tripId}/proposals/{proposalId}/decision:
+    post:
+      operationId: decideProposal
+      summary: Driver decides proposal independently of SDK result
+      security:
+      - PhoneJwt: []
+      - VehicleBearer: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResponse'
+              example:
+                proposal:
+                  id: 11111111-1111-4111-8111-111111111111
+                  kind: DESTINATION
+                  decisionStatus: PENDING
+                  version: 0
+                  place:
+                    name: Synthetic name
+                tripRevision: 0
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: Trip must be ACTIVE. PLEOS creates immediate FAILED/SDK_NOT_CONNECTED. Unsupported STOP/PARKING
+        fail UNSUPPORTED_COMMAND. DEMO SET_DESTINATION needs coordinates and claimed pairing. Only one REQUESTED/CLAIMED/OUTCOME_UNKNOWN
+        command allowed. Real destination is never changed by demo. DEMO additionally requires server yeouro.v2.demo-enabled=true
+        (default false).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+            example:
+              decision: ACCEPT
+              expectedVersion: 0
+              mode: PLEOS
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - name: proposalId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/navigation-commands:
+    get:
+      operationId: listNavigationCommands
+      summary: Vehicle reads its own commands
+      security:
+      - VehicleBearer: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Commands'
+              example:
+                commands: []
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: Requires NAV_COMMAND_CLAIM scope. Expired unclaimed commands become EXPIRED; claimed lease expiration
+        becomes OUTCOME_UNKNOWN.
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: &id014
+          - REQUESTED
+          - CLAIMED
+          - DEMO_APPLIED
+          - FAILED
+          - CANCELLED
+          - EXPIRED
+          - OUTCOME_UNKNOWN
+          default: REQUESTED
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/navigation-commands/{commandId}/claim:
+    post:
+      operationId: claimNavigationCommand
+      summary: Vehicle claims a demo execution lease
+      security:
+      - VehicleBearer: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NavigationCommand'
+              example:
+                id: 11111111-1111-4111-8111-111111111111
+                status: REQUESTED
+                version: 0
+                commandType: SET_DESTINATION
+                integrationMode: PLEOS
+                reason: null
+                expiresAt: '2026-10-28T09:00:00Z'
+                target:
+                  name: Synthetic name
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: Requires NAV_COMMAND_CLAIM. Deadline is command.expiresAt (up to 120s from creation, not reset
+        by claim). Claim never proves execution.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandClaimRequest'
+            example:
+              expectedVersion: 0
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - name: commandId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/navigation-commands/{commandId}/result:
+    post:
+      operationId: reportNavigationResult
+      summary: Vehicle reports demo outcome
+      security:
+      - VehicleBearer: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NavigationCommand'
+              example:
+                id: 11111111-1111-4111-8111-111111111111
+                status: REQUESTED
+                version: 0
+                commandType: SET_DESTINATION
+                integrationMode: PLEOS
+                reason: null
+                expiresAt: '2026-10-28T09:00:00Z'
+                target:
+                  name: Synthetic name
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: Requires NAV_RESULT_WRITE. Only CLAIMED, unexpired DEMO commands accept results. Late/cancelled
+        outcomes fail closed. No automatic retry of external SDK effects.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandResultRequest'
+            example:
+              expectedVersion: 1
+              outcome: DEMO_APPLIED
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - name: commandId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/stops:
+    put:
+      operationId: replaceStops
+      summary: Owner or driver replaces ordered stops
+      security:
+      - PhoneJwt: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StopsResponse'
+              example:
+                stops: []
+                planRevision: 0
+                revision: 0
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '412':
+          $ref: '#/components/responses/Error412'
+        '428':
+          $ref: '#/components/responses/Error428'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StopsRequest'
+            example:
+              stops:
+              - place:
+                  name: Synthetic cafe
+                stayMinutes: 20
+                walkToPlaceSeconds: 120
+                returnWalkSeconds: 120
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/PlanMatch'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/comparisons:
+    post:
+      operationId: createComparison
+      summary: Phone collaborator creates immutable comparison
+      security:
+      - PhoneJwt: []
+      responses:
+        '201':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comparison'
+              example:
+                comparisonId: 11111111-1111-4111-8111-111111111111
+                mode: DEMO
+                tripPlanRevision: 0
+                calculatedAt: '2026-10-28T09:00:00Z'
+                expiresAt: '2026-10-28T09:00:00Z'
+                candidates: []
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '503':
+          $ref: '#/components/responses/Error503'
+      description: DEMO requires demo-enabled; REAL always 503 ROUTING_UNAVAILABLE. Provider data is never fabricated
+        as real. No origin coordinates are persisted in the response snapshot.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComparisonRequest'
+            example:
+              mode: DEMO
+              origin:
+                latitude: 37.5
+                longitude: 127.0
+                observedAt: '2026-10-28T09:00:00Z'
+                source: SIMULATED
+              parkingDurationMinutes: 120
+              tripPlanRevision: 0
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/comparisons/{comparisonId}:
+    get:
+      operationId: getComparison
+      summary: Read snapshot and freshness flags
+      security:
+      - PhoneJwt: []
+      - VehicleBearer: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComparisonRead'
+              example:
+                snapshot:
+                  comparisonId: 11111111-1111-4111-8111-111111111111
+                  mode: DEMO
+                  tripPlanRevision: 0
+                  calculatedAt: '2026-10-28T09:00:00Z'
+                  expiresAt: '2026-10-28T09:00:00Z'
+                  candidates: []
+                stalePlan: false
+                expired: false
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: Vehicle requires TRIP_READ. Expired/stale snapshot is returned with flags, not recalculated or
+        silently represented as fresh.
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - name: comparisonId
+        in: path
+        required: true
+        schema: *id001
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/parking-confirmations:
+    post:
+      operationId: confirmParking
+      summary: Driver explicitly confirms actual parking
+      security:
+      - PhoneJwt: []
+      - VehicleBearer: []
+      responses:
+        '201':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParkingConfirmation'
+              example:
+                id: 11111111-1111-4111-8111-111111111111
+                phase: PARKED
+                parkedAt: '2026-10-28T09:00:00Z'
+                source: USER_CONFIRMED
+                userConfirmed: true
+                revision: 0
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: ACTIVE trip, expectedVersion=trip.revision, source USER_CONFIRMED and userConfirmed=true. Vehicle
+        requires PARKING_CONFIRM. Observed time within last 24h/future 30s and not before latest phase event. Transitions
+        DRIVING to PARKED.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParkingRequest'
+            example:
+              parkedAt: '2026-10-28T09:00:00Z'
+              place:
+                name: Synthetic garage
+              source: USER_CONFIRMED
+              userConfirmed: true
+              expectedVersion: 3
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/phase-events:
+    post:
+      operationId: recordPhase
+      summary: Driver confirms travel phase
+      security:
+      - PhoneJwt: []
+      - VehicleBearer: []
+      responses:
+        '201':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhaseEvent'
+              example:
+                id: 11111111-1111-4111-8111-111111111111
+                phase: DRIVING
+                observedAt: '2026-10-28T09:00:00Z'
+                source: USER_CONFIRMED
+                userConfirmed: true
+                revision: 0
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: 'ACTIVE trip, expectedVersion=trip.revision, source USER_CONFIRMED and userConfirmed=true. Vehicle
+        requires TRIP_PHASE. PARKED must use parking-confirmations. Time window last24h/future30s. Valid transitions:
+        PARKED→WALKING/AT_DESTINATION/DRIVING, WALKING→AT_DESTINATION/RETURNING, AT_DESTINATION→RETURNING, RETURNING→DRIVING.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhaseRequest'
+            example:
+              phase: WALKING
+              observedAt: '2026-10-28T09:00:00Z'
+              source: USER_CONFIRMED
+              userConfirmed: true
+              expectedVersion: 4
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/return-reminder-plan:
+    put:
+      operationId: saveReminder
+      summary: Owner or driver saves client-local reminder plan
+      security:
+      - PhoneJwt: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reminder'
+              example: &id003
+                status: DISABLED
+                version: 0
+                remindAt: null
+                clientStatuses: []
+                schedulingMode: CLIENT_LOCAL
+                deliveryGuarantee: NONE
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '412':
+          $ref: '#/components/responses/Error412'
+        '428':
+          $ref: '#/components/responses/Error428'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReminderRequest'
+            example:
+              enabled: true
+              anchor: PARKING_CONFIRMED
+              stayMinutes: 90
+              leadMinutes: 10
+              reminderBasis: STAY_END
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/PlanMatch'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+    get:
+      operationId: getReminder
+      summary: Read reminder plan and own client reports
+      security:
+      - PhoneJwt: []
+      - VehicleBearer: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reminder'
+              example: *id003
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/return-reminder-plan/client-status:
+    put:
+      operationId: reportReminderClientStatus
+      summary: Driver phone reports local scheduling status
+      security:
+      - PhoneJwt: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reminder'
+              example: *id003
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: planVersion is reminder.version, not planRevision. SCHEDULED requires PLANNED reminder. Monotonic
+        observedAt within last24h/future30s. No push or delivery guarantee.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientStatusRequest'
+            example:
+              planVersion: 1
+              installationId: 11111111-1111-4111-8111-111111111111
+              status: SCHEDULED
+              observedAt: '2026-10-28T09:00:00Z'
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /me:
+    get:
+      operationId: getCurrentAccount
+      summary: Read current phone account
+      security:
+      - PhoneJwt: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+              example:
+                userId: 11111111-1111-4111-8111-111111111111
+                displayName: Synthetic user
+                serverTime: '2026-10-28T09:00:00Z'
+        '401':
+          $ref: '#/components/responses/Error401'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips:
+    get:
+      operationId: listTrips
+      summary: List current account memberships
+      security:
+      - PhoneJwt: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TripList'
+              example:
+                trips: []
+                serverTime: '2026-10-28T09:00:00Z'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+      description: Newest 100 rows only; no cursor support. Status filter is optional.
+      parameters:
+      - name: status
+        in: query
+        schema: &id018
+          type: string
+          enum:
+          - PLANNED
+          - ACTIVE
+          - ENDED
+          - CANCELLED
+          - EXPIRED
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+    post:
+      operationId: createTrip
+      summary: Create an account-owned planned trip
+      security:
+      - PhoneJwt: []
+      responses:
+        '201':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+              example:
+                id: 11111111-1111-4111-8111-111111111111
+                status: PLANNED
+                phase: null
+                revision: 0
+                planRevision: 0
+                version: 0
+                title: null
+                destination:
+                  name: Synthetic name
+                deadlineAt: null
+                arrivalBasis: PERSON
+                plannedStayMinutes: null
+                timeZone: Synthetic timeZone
+                expiresAt: '2026-10-28T09:00:00Z'
+                sharing: null
+                location: null
+                participants: []
+                capabilities:
+                  navigation:
+                    availability: UNAVAILABLE
+                    reason: Synthetic reason
+                serverTime: '2026-10-28T09:00:00Z'
+                stops: []
+                viewer:
+                  participantId: 11111111-1111-4111-8111-111111111111
+                  role: DRIVER
+                  isOwner: true
+                  clientType: PHONE
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Plan'
+            example:
+              destination:
+                name: Synthetic concert hall
+                latitude: 37.5
+                longitude: 127.0
+              arrivalBasis: PERSON
+              deadlineAt: '2026-10-28T10:00:00Z'
+              plannedStayMinutes: 90
+              timeZone: Asia/Seoul
+              ownerRole: DRIVER
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}:
+    get:
+      operationId: getTrip
+      summary: Read permission-filtered trip snapshot
+      security:
+      - PhoneJwt: []
+      - VehicleBearer: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+            ETag:
+              description: Plan revision for conditional plan writes.
+              schema:
+                type: string
+              example: '"plan-0"'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+              example:
+                id: 11111111-1111-4111-8111-111111111111
+                status: PLANNED
+                phase: null
+                revision: 0
+                planRevision: 0
+                version: 0
+                title: null
+                destination:
+                  name: Synthetic name
+                deadlineAt: null
+                arrivalBasis: PERSON
+                plannedStayMinutes: null
+                timeZone: Synthetic timeZone
+                expiresAt: '2026-10-28T09:00:00Z'
+                sharing: null
+                location: null
+                participants: []
+                capabilities:
+                  navigation:
+                    availability: UNAVAILABLE
+                    reason: Synthetic reason
+                serverTime: '2026-10-28T09:00:00Z'
+                stops: []
+                viewer:
+                  participantId: 11111111-1111-4111-8111-111111111111
+                  role: DRIVER
+                  isOwner: true
+                  clientType: PHONE
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: Phone owner may inspect terminal trip with sharing/location removed. Other members and vehicles
+        need live trip/session/consent. Vehicle requires TRIP_READ.
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+    patch:
+      operationId: replaceTripPlan
+      summary: Owner replaces full plan fields
+      security:
+      - PhoneJwt: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+              example:
+                id: 11111111-1111-4111-8111-111111111111
+                status: PLANNED
+                phase: null
+                revision: 0
+                planRevision: 0
+                version: 0
+                title: null
+                destination:
+                  name: Synthetic name
+                deadlineAt: null
+                arrivalBasis: PERSON
+                plannedStayMinutes: null
+                timeZone: Synthetic timeZone
+                expiresAt: '2026-10-28T09:00:00Z'
+                sharing: null
+                location: null
+                participants: []
+                capabilities:
+                  navigation:
+                    availability: UNAVAILABLE
+                    reason: Synthetic reason
+                serverTime: '2026-10-28T09:00:00Z'
+                stops: []
+                viewer:
+                  participantId: 11111111-1111-4111-8111-111111111111
+                  role: DRIVER
+                  isOwner: true
+                  clientType: PHONE
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '412':
+          $ref: '#/components/responses/Error412'
+        '428':
+          $ref: '#/components/responses/Error428'
+      description: Not JSON Merge Patch. destination and timeZone required. ownerRole cannot be changed. Omitted
+        expiresAt retains previous expiry; other omitted optional fields clear/reset. Use latest planRevision, independent
+        of location updates.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Plan'
+            example:
+              destination:
+                name: Synthetic revised hall
+              timeZone: Asia/Seoul
+              arrivalBasis: PERSON
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/PlanMatch'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/start:
+    post:
+      operationId: startTrip
+      summary: Owner or driver starts planned trip
+      security:
+      - PhoneJwt: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transition'
+              example:
+                id: 11111111-1111-4111-8111-111111111111
+                status: ACTIVE
+                version: 0
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: expectedVersion is trip.version. Start sets ACTIVE/DRIVING; end/cancel revoke sharing, location,
+        invitations and vehicle credentials atomically. Authorization is rechecked before idempotency replay; a
+        revoked vehicle cannot replay after ending.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionRequest'
+            example:
+              expectedVersion: 0
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/end:
+    post:
+      operationId: endTrip
+      summary: Owner, driver or scoped vehicle ends trip
+      security:
+      - PhoneJwt: []
+      - VehicleBearer: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transition'
+              example:
+                id: 11111111-1111-4111-8111-111111111111
+                status: ACTIVE
+                version: 0
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: expectedVersion is trip.version. Start sets ACTIVE/DRIVING; end/cancel revoke sharing, location,
+        invitations and vehicle credentials atomically. Authorization is rechecked before idempotency replay; a
+        revoked vehicle cannot replay after ending. End requires ACTIVE; use cancel for a PLANNED trip.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionRequest'
+            example:
+              expectedVersion: 0
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+  /trips/{tripId}/cancel:
+    post:
+      operationId: cancelTrip
+      summary: Owner cancels trip
+      security:
+      - PhoneJwt: []
+      responses:
+        '200':
+          description: Success
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+              description: Do not cache sensitive API responses.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transition'
+              example:
+                id: 11111111-1111-4111-8111-111111111111
+                status: ACTIVE
+                version: 0
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      description: expectedVersion is trip.version. Start sets ACTIVE/DRIVING; end/cancel revoke sharing, location,
+        invitations and vehicle credentials atomically. Authorization is rechecked before idempotency replay; a
+        revoked vehicle cannot replay after ending.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransitionRequest'
+            example:
+              expectedVersion: 0
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      x-privacy: no-store; synthetic examples only; redact credentials and exact coordinates
+components:
+  securitySchemes:
+    PhoneJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Phone account JWT with UUID sub, valid signature/issuer/audience/expiry. Not v1 capabilities.
+        Never give phone refresh token to vehicle.
+    VehicleBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: Short-lived one-trip credential issued by pairing claim; DB checked for revocation and scope
+        on every request, not a phone JWT.
+    PairingPollSecret:
+      type: apiKey
+      in: header
+      name: X-Pairing-Poll-Secret
+      description: Opaque one-pairing polling/claim secret; distinct from vehicle bearer and JWT. Never URL/query.
+        Actual implementation uses this header, not Authorization.
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+      description: See operation-specific retry rules; do not assume secret issuance can be replayed.
+    PlanMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+        pattern: ^"plan-[0-9]+"$
+      example: '"plan-0"'
+      description: Quoted current planRevision ETag, not trip revision.
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+      - code
+      - message
+      description: Redacted domain or request error; the implementation does not return the future-design requestId/currentVersion/retryable
+        fields.
+    Place:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          nullable: true
+      required:
+      - name
+      description: Coordinates must be finite and supplied together or both omitted/null; sensitive destination.
+      x-sensitive: true
+    PlanningPlace:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          nullable: true
+      required:
+      - name
+      description: Coordinates must be finite and supplied as a pair.
+      x-sensitive: true
+    Stop:
+      type: object
+      properties:
+        place:
+          $ref: '#/components/schemas/PlanningPlace'
+        stayMinutes:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 10080
+        walkToPlaceSeconds:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 604800
+          nullable: true
+        returnWalkSeconds:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 604800
+          nullable: true
+      required:
+      - place
+      description: Omitted stayMinutes defaults to 0. Missing walking measurements remain unknown, not zero.
+    StopsRequest:
+      type: object
+      properties:
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/Stop'
+          maxItems: 20
+      required:
+      - stops
+    StopsResponse:
+      type: object
+      properties:
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/Stop'
+        planRevision:
+          type: integer
+          format: int64
+          minimum: 0
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - stops
+      - planRevision
+      - revision
+    Origin:
+      type: object
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        observedAt: &id004
+          type: string
+          format: date-time
+        source:
+          type: string
+          enum:
+          - PHONE
+          - VEHICLE
+          - SIMULATED
+      required:
+      - latitude
+      - longitude
+      - observedAt
+      - source
+      description: Sensitive coordinates. Origin age <=120 seconds, future skew <=30 seconds; client-reported source
+        is not OEM attestation.
+      x-sensitive: true
+    ComparisonRequest:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+          - REAL
+          - DEMO
+        origin:
+          $ref: '#/components/schemas/Origin'
+        parkingDurationMinutes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 10080
+        tripPlanRevision:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - mode
+      - origin
+      - parkingDurationMinutes
+      description: Destination and stops come from the server plan. Omitted tripPlanRevision defaults to 0. REAL
+        fails ROUTING_UNAVAILABLE (503).
+    Fee:
+      type: object
+      properties:
+        estimatedAmount:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+        currency:
+          type: string
+          enum:
+          - KRW
+        pricingDurationMinutes:
+          type: integer
+          format: int64
+          minimum: 1
+        rulesAsOf:
+          type: string
+          format: date-time
+          nullable: true
+        availability:
+          type: string
+          enum:
+          - ESTIMATED
+      required:
+      - estimatedAmount
+      - currency
+      - pricingDurationMinutes
+      - rulesAsOf
+      - availability
+    Occupancy:
+      type: object
+      properties:
+        availability:
+          type: string
+          enum:
+          - UNKNOWN
+        availableSpaces:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+        observedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - availability
+      - availableSpaces
+      - observedAt
+      description: No real occupancy provider. Values remain null, never interpreted as free spaces.
+    Provenance:
+      type: object
+      properties:
+        metric:
+          type: string
+        provider:
+          type: string
+          enum:
+          - FIXTURE
+          - USER_PLAN
+        source:
+          type: string
+          enum:
+          - SIMULATED
+          - CALCULATED
+        fetchedAt: *id004
+        assumptions:
+          type: array
+          items:
+            type: string
+      required:
+      - metric
+      - provider
+      - source
+      - fetchedAt
+      - assumptions
+    Candidate:
+      type: object
+      properties:
+        candidateId:
+          type: string
+        vehicleArrivalAt:
+          type: string
+          format: date-time
+          nullable: true
+        personArrivalAt:
+          type: string
+          format: date-time
+          nullable: true
+        drivingSeconds:
+          type: integer
+          format: int64
+          minimum: 0
+        parkingSearchSeconds:
+          type: integer
+          format: int64
+          minimum: 0
+        walkToDestinationSeconds:
+          type: integer
+          format: int64
+          minimum: 0
+        returnWalkSeconds:
+          type: integer
+          format: int64
+          minimum: 0
+        intermediateStaySeconds:
+          type: integer
+          format: int64
+          minimum: 0
+        intermediateSeconds:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+        slackSeconds:
+          type: integer
+          format: int64
+          nullable: true
+        arrivalBasis:
+          type: string
+          enum:
+          - PERSON
+          - VEHICLE
+        quality:
+          type: string
+          enum:
+          - COMPLETE
+          - PARTIAL
+          - UNAVAILABLE
+        fee:
+          $ref: '#/components/schemas/Fee'
+        occupancy:
+          $ref: '#/components/schemas/Occupancy'
+        provenance:
+          type: array
+          items:
+            $ref: '#/components/schemas/Provenance'
+        warnings:
+          type: array
+          items:
+            type: string
+      required:
+      - candidateId
+      - vehicleArrivalAt
+      - personArrivalAt
+      - drivingSeconds
+      - parkingSearchSeconds
+      - walkToDestinationSeconds
+      - returnWalkSeconds
+      - intermediateStaySeconds
+      - intermediateSeconds
+      - slackSeconds
+      - arrivalBasis
+      - quality
+      - fee
+      - occupancy
+      - provenance
+      - warnings
+    Comparison:
+      type: object
+      properties:
+        comparisonId: *id001
+        mode:
+          type: string
+          enum:
+          - DEMO
+        tripPlanRevision:
+          type: integer
+          format: int64
+          minimum: 0
+        calculatedAt: *id004
+        expiresAt: *id004
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Candidate'
+      required:
+      - comparisonId
+      - mode
+      - tripPlanRevision
+      - calculatedAt
+      - expiresAt
+      - candidates
+      description: Immutable synthetic snapshot, five-minute lifetime. Negative slack means predicted lateness.
+        Not a navigation command.
+    ComparisonRead:
+      type: object
+      properties:
+        snapshot:
+          $ref: '#/components/schemas/Comparison'
+        stalePlan: &id005
+          type: boolean
+        expired: *id005
+      required:
+      - snapshot
+      - stalePlan
+      - expired
+    ParkingRequest:
+      type: object
+      properties:
+        parkedAt: *id004
+        place:
+          $ref: '#/components/schemas/PlanningPlace'
+        source:
+          type: string
+          enum:
+          - USER_CONFIRMED
+        userConfirmed:
+          type: boolean
+          enum:
+          - true
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - parkedAt
+      - place
+      - source
+      - userConfirmed
+      description: Requires userConfirmed=true; SDK arrival cannot confirm parking. Omitted expectedVersion defaults
+        to 0.
+    PhaseRequest:
+      type: object
+      properties:
+        phase:
+          type: string
+          enum:
+          - DRIVING
+          - WALKING
+          - AT_DESTINATION
+          - RETURNING
+        observedAt: *id004
+        source:
+          type: string
+          enum:
+          - USER_CONFIRMED
+        userConfirmed:
+          type: boolean
+          enum:
+          - true
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - phase
+      - observedAt
+      - source
+      - userConfirmed
+    ReminderRequest:
+      type: object
+      properties:
+        enabled: *id005
+        anchor:
+          type: string
+          enum:
+          - PARKING_CONFIRMED
+          - PERSON_ARRIVAL_CONFIRMED
+        stayMinutes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 10080
+        leadMinutes:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 10080
+        reminderBasis:
+          type: string
+          enum:
+          - STAY_END
+          - RETURN_TO_CAR
+        returnWalkSeconds:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 604800
+          nullable: true
+      required:
+      - anchor
+      - stayMinutes
+      - reminderBasis
+      description: leadMinutes cannot exceed stayMinutes. RETURN_TO_CAR requires returnWalkSeconds; computed offset
+        cannot be negative. Omitted enabled=false and leadMinutes=0.
+    ClientStatusRequest:
+      type: object
+      properties:
+        planVersion: &id015
+          type: integer
+          format: int64
+          minimum: 0
+        installationId: *id001
+        status: &id016
+          type: string
+          enum:
+          - SCHEDULED
+          - PERMISSION_DENIED
+          - CANCELLED
+          - ERROR
+        observedAt: *id004
+      required:
+      - installationId
+      - status
+      - observedAt
+      description: Omitted planVersion defaults to 0. This is a client report, not delivery evidence.
+    LocationRequest:
+      type: object
+      properties:
+        observationId: *id001
+        sharingGeneration:
+          type: integer
+          format: int64
+          minimum: 1
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        accuracyMeters:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 10000
+        observedAt: *id004
+        source:
+          type: string
+          enum:
+          - PHONE
+          - VEHICLE
+          - SIMULATED
+        publisherSequence:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+      required:
+      - observationId
+      - sharingGeneration
+      - observedAt
+      - source
+      description: Exact coordinates are sensitive. Phone JWT must report PHONE; vehicle credential must report
+        VEHICLE; SIMULATED needs demo enabled. Omitted numeric latitude/longitude/accuracy default to zero; clients
+        should always supply them explicitly. Timestamp normalized to milliseconds.
+      x-sensitive: true
+    LocationMetadata:
+      type: object
+      properties:
+        observationId: *id001
+        receivedAt: *id004
+        freshness: &id006
+          type: string
+          enum:
+          - FRESH
+          - STALE
+        ageSeconds: &id007
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - observationId
+      - receivedAt
+      - freshness
+      - ageSeconds
+    Location:
+      type: object
+      properties:
+        observationId: *id001
+        receivedAt: *id004
+        freshness: *id006
+        ageSeconds: *id007
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        accuracyMeters:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 10000
+        observedAt: *id004
+        source:
+          type: string
+          enum:
+          - PHONE
+          - VEHICLE
+          - SIMULATED
+      required:
+      - observationId
+      - receivedAt
+      - freshness
+      - ageSeconds
+      - latitude
+      - longitude
+      - accuracyMeters
+      - observedAt
+      - source
+      x-sensitive: true
+    SessionRequest:
+      type: object
+      properties:
+        scopes: &id010
+          type: array
+          items:
+            type: string
+            enum:
+            - TRIP_COLLABORATION
+            - LOCATION_PUBLISH
+            - LOCATION_VIEW
+        consentPolicyVersion: &id011
+          type: string
+          minLength: 1
+          maxLength: 40
+      required:
+      - scopes
+      - consentPolicyVersion
+    SharingSession:
+      type: object
+      properties:
+        sessionId: *id001
+        generation:
+          type: integer
+          format: int64
+          minimum: 1
+        expiresAt: *id004
+      required:
+      - sessionId
+      - generation
+      - expiresAt
+    InviteRequest:
+      type: object
+      properties:
+        role: &id008
+          type: string
+          enum: &id017
+          - DRIVER
+          - COMPANION
+        sessionId: *id001
+        expiresInSeconds:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 900
+          default: 900
+      required:
+      - role
+      - sessionId
+    Invite:
+      type: object
+      properties:
+        id: *id001
+        code: &id009
+          type: string
+          minLength: 1
+          x-sensitive: true
+          description: One-time secret; never put in URL, logs or analytics.
+        expiresAt: *id004
+        role: *id008
+      required:
+      - id
+      - code
+      - expiresAt
+      - role
+    JoinRequest:
+      type: object
+      properties:
+        code: *id009
+        consentScopes: *id010
+        consentPolicyVersion: *id011
+      required:
+      - code
+      - consentScopes
+      - consentPolicyVersion
+      description: TRIP_COLLABORATION must be explicitly selected. LOCATION_PUBLISH is driver-only. Name comes from
+        account, not request.
+    Membership:
+      type: object
+      properties:
+        tripId: *id001
+        participantId: *id001
+        role: *id008
+        sharingGeneration:
+          type: integer
+          format: int64
+          minimum: 1
+      required:
+      - tripId
+      - participantId
+      - role
+      - sharingGeneration
+    ConsentRequest:
+      type: object
+      properties:
+        scopes: &id012
+          type: object
+          properties:
+            TRIP_COLLABORATION: *id005
+            LOCATION_VIEW: *id005
+            LOCATION_PUBLISH: *id005
+          additionalProperties: false
+        consentPolicyVersion: *id011
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - scopes
+      - consentPolicyVersion
+      - expectedVersion
+      description: Version of this participant consent record, initially 0; not trip revision. Only provided scopes
+        are changed; false revokes, true grants.
+    Consent:
+      type: object
+      properties:
+        sessionId: *id001
+        scopes: *id012
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - sessionId
+      - scopes
+      - version
+      description: scopes echoes this update, not necessarily the full active consent set.
+    ReadinessRequest:
+      type: object
+      properties:
+        ready: *id005
+        observedAt: *id004
+      required:
+      - observedAt
+      description: Omitted ready defaults false. Future skew maximum 30 seconds.
+    Readiness:
+      type: object
+      properties:
+        participantId: *id001
+        ready: *id005
+      required:
+      - participantId
+      - ready
+    Revoked:
+      type: object
+      properties:
+        sharingEnabled:
+          type: boolean
+          enum:
+          - false
+      required:
+      - sharingEnabled
+    PairingRequest:
+      type: object
+      properties:
+        installationId: *id001
+        displayLabel:
+          type: string
+          nullable: true
+      required:
+      - installationId
+      description: displayLabel is currently accepted but not persisted or returned. Installation ID is not proof
+        of vehicle ownership.
+    PairingIssued:
+      type: object
+      properties:
+        pairingId: *id001
+        displayCode: *id009
+        pollSecret: *id009
+        expiresAt: *id004
+      required:
+      - pairingId
+      - displayCode
+      - pollSecret
+      - expiresAt
+    PairingApprovalRequest:
+      type: object
+      properties:
+        tripId: *id001
+        displayCode: *id009
+        scopes:
+          type: array
+          items: &id013
+            type: string
+            enum:
+            - TRIP_READ
+            - LOCATION_PUBLISH
+            - NAV_COMMAND_CLAIM
+            - NAV_RESULT_WRITE
+            - PROPOSAL_DECIDE
+            - TRIP_END
+            - PARKING_CONFIRM
+            - TRIP_PHASE
+          minItems: 1
+      required:
+      - tripId
+      - displayCode
+      - scopes
+      description: Phone current DRIVER approves an explicit scope allowlist; LOCATION_PUBLISH additionally requires
+        driver publication consent.
+    PairingApproved:
+      type: object
+      properties:
+        pairingId: *id001
+        status:
+          type: string
+          enum:
+          - APPROVED
+      required:
+      - pairingId
+      - status
+    PairingStatus:
+      type: object
+      properties:
+        pairingId: *id001
+        status:
+          type: string
+          enum:
+          - PENDING
+          - APPROVED
+          - CLAIMED
+          - REVOKED
+          - EXPIRED
+        expiresAt: *id004
+      required:
+      - pairingId
+      - status
+      - expiresAt
+    VehicleCredential:
+      type: object
+      properties:
+        pairingId: *id001
+        tripId: *id001
+        credential: *id009
+        expiresAt: *id004
+        scopes:
+          type: array
+          items: *id013
+        sharingGeneration:
+          type: integer
+          format: int64
+          minimum: 1
+      required:
+      - pairingId
+      - tripId
+      - credential
+      - expiresAt
+      - scopes
+      - sharingGeneration
+    ProposalRequest:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+          - DESTINATION
+          - STOP
+          - PARKING
+        place:
+          $ref: '#/components/schemas/Place'
+      required:
+      - kind
+      - place
+    Proposal:
+      type: object
+      properties:
+        id: *id001
+        kind:
+          type: string
+          enum:
+          - DESTINATION
+          - STOP
+          - PARKING
+        decisionStatus:
+          type: string
+          enum:
+          - PENDING
+          - ACCEPTED
+          - DISMISSED
+          - CANCELLED
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        place:
+          $ref: '#/components/schemas/Place'
+      required:
+      - id
+      - kind
+      - decisionStatus
+      - version
+      - place
+    DecisionRequest:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum:
+          - ACCEPT
+          - DISMISS
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+        mode:
+          type: string
+          enum:
+          - PLEOS
+          - DEMO
+          default: PLEOS
+      required:
+      - decision
+      - expectedVersion
+      description: expectedVersion is proposal.version. ACCEPT does not prove navigation application.
+    NavigationCommand:
+      type: object
+      properties:
+        id: *id001
+        status:
+          type: string
+          enum: *id014
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        commandType:
+          type: string
+          enum:
+          - SET_DESTINATION
+          - ADD_STOP
+          - SELECT_PARKING
+        integrationMode:
+          type: string
+          enum:
+          - PLEOS
+          - DEMO
+        reason:
+          type: string
+          nullable: true
+        expiresAt: *id004
+        target:
+          $ref: '#/components/schemas/Place'
+      required:
+      - id
+      - status
+      - version
+      - commandType
+      - integrationMode
+      - reason
+      - expiresAt
+      - target
+      description: Real APPLIED is not available. OUTCOME_UNKNOWN blocks further acceptance; no reconciliation endpoint
+        is implemented. Do not automatically execute again.
+    NavigationAvailability:
+      type: object
+      properties:
+        availability:
+          type: string
+          enum:
+          - UNAVAILABLE
+          - SIMULATED
+        reason:
+          type: string
+      required:
+      - availability
+      - reason
+    DecisionResponse:
+      type: object
+      properties:
+        proposal:
+          $ref: '#/components/schemas/Proposal'
+        navigationCommand:
+          $ref: '#/components/schemas/NavigationCommand'
+        navigation:
+          $ref: '#/components/schemas/NavigationAvailability'
+        tripRevision:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - proposal
+      - tripRevision
+      description: DISMISS omits navigationCommand and navigation. ACCEPT creates command, possibly immediately
+        FAILED.
+    Commands:
+      type: object
+      properties:
+        commands:
+          type: array
+          items:
+            $ref: '#/components/schemas/NavigationCommand'
+      required:
+      - commands
+    CommandClaimRequest:
+      type: object
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - expectedVersion
+    CommandResultRequest:
+      type: object
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+        outcome:
+          type: string
+          enum:
+          - DEMO_APPLIED
+          - FAILED
+      required:
+      - expectedVersion
+      - outcome
+      description: expectedVersion is command.version. APPLIED is rejected with 400 SDK_NOT_CONNECTED. No provider
+        evidence or real SDK result contract exists yet.
+    ParkingConfirmation:
+      type: object
+      properties:
+        id: *id001
+        phase:
+          type: string
+          enum:
+          - PARKED
+        parkedAt: *id004
+        source:
+          type: string
+          enum:
+          - USER_CONFIRMED
+        userConfirmed:
+          type: boolean
+          enum:
+          - true
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - id
+      - phase
+      - parkedAt
+      - source
+      - userConfirmed
+      - revision
+    PhaseEvent:
+      type: object
+      properties:
+        id: *id001
+        phase:
+          type: string
+          enum:
+          - DRIVING
+          - WALKING
+          - AT_DESTINATION
+          - RETURNING
+        observedAt: *id004
+        source:
+          type: string
+          enum:
+          - USER_CONFIRMED
+        userConfirmed:
+          type: boolean
+          enum:
+          - true
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - id
+      - phase
+      - observedAt
+      - source
+      - userConfirmed
+      - revision
+    ClientStatus:
+      type: object
+      properties:
+        planVersion: *id015
+        installationId: *id001
+        status: *id016
+        observedAt: *id004
+        current: *id005
+      required:
+      - planVersion
+      - installationId
+      - status
+      - observedAt
+      - current
+    Reminder:
+      type: object
+      properties:
+        id: *id001
+        anchor:
+          type: string
+          enum:
+          - PARKING_CONFIRMED
+          - PERSON_ARRIVAL_CONFIRMED
+        stayMinutes:
+          type: integer
+          format: int64
+          minimum: 1
+        leadMinutes:
+          type: integer
+          format: int64
+          minimum: 0
+        reminderBasis:
+          type: string
+          enum:
+          - STAY_END
+          - RETURN_TO_CAR
+        returnWalkSeconds:
+          type: integer
+          format: int64
+          minimum: 0
+          nullable: true
+        remindAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum:
+          - DISABLED
+          - WAITING_FOR_ANCHOR
+          - PLANNED
+          - CANCELLED
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        clientStatuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientStatus'
+        schedulingMode:
+          type: string
+          enum:
+          - CLIENT_LOCAL
+        deliveryGuarantee:
+          type: string
+          enum:
+          - NONE
+        planRevision:
+          type: integer
+          format: int64
+          minimum: 0
+        anchorConfirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Actual confirmed milestone used for this anchor; null while awaiting confirmation. Omitted
+            when no reminder plan exists.
+      required:
+      - status
+      - version
+      - remindAt
+      - clientStatuses
+      - schedulingMode
+      - deliveryGuarantee
+      description: 'Without a saved plan: DISABLED, version 0, null remindAt; other plan fields omitted. PUT additionally
+        returns planRevision. Client statuses scoped to the current participant; never proof of notification delivery.'
+    Plan:
+      type: object
+      properties:
+        destination:
+          $ref: '#/components/schemas/PlanningPlace'
+        arrivalBasis:
+          type: string
+          enum:
+          - PERSON
+          - VEHICLE
+          default: PERSON
+        deadlineAt:
+          type: string
+          format: date-time
+          nullable: true
+        plannedStayMinutes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 10080
+          nullable: true
+        timeZone:
+          type: string
+          minLength: 1
+          example: Asia/Seoul
+        startsAt:
+          type: string
+          format: date-time
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        ownerRole:
+          type: string
+          enum: *id017
+          default: DRIVER
+        title:
+          type: string
+          maxLength: 120
+          nullable: true
+      required:
+      - destination
+      - timeZone
+      description: 'Create defaults to PLANNED, owner DRIVER, PERSON basis. Expiry must be in future, <=30 days
+        from now, and cover max(now, startsAt, deadlineAt) + plannedStayMinutes. Default expiry is that anchor +1
+        day +planned stay. PATCH is full plan replacement: omitted optional fields clear/reset except expiresAt
+        retains prior value, which must still cover the revised plan; ownerRole must be omitted/null.'
+    TransitionRequest:
+      type: object
+      properties:
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+      description: Trip version, not planRevision. Omitted expectedVersion defaults to 0.
+    Transition:
+      type: object
+      properties:
+        id: *id001
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - ENDED
+          - CANCELLED
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - id
+      - status
+      - version
+    Me:
+      type: object
+      properties:
+        userId: *id001
+        displayName:
+          type: string
+        serverTime: *id004
+      required:
+      - userId
+      - displayName
+      - serverTime
+    TripListItem:
+      type: object
+      properties:
+        id: *id001
+        title:
+          type: string
+          nullable: true
+        status: *id018
+        destinationName:
+          type: string
+        planRevision:
+          type: integer
+          format: int64
+          minimum: 0
+        expiresAt: *id004
+      required:
+      - id
+      - title
+      - status
+      - destinationName
+      - planRevision
+      - expiresAt
+    TripList:
+      type: object
+      properties:
+        trips:
+          type: array
+          items:
+            $ref: '#/components/schemas/TripListItem'
+          maxItems: 100
+        serverTime: *id004
+      required:
+      - trips
+      - serverTime
+      description: Newest 100 active memberships only. No pagination cursor, nextCursor or historical membership
+        recovery API.
+    Participant:
+      type: object
+      properties:
+        id: *id001
+        role: *id008
+        displayName:
+          type: string
+        ready: *id005
+        readyUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        consentVersion:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+      - id
+      - role
+      - displayName
+      - ready
+      - readyUpdatedAt
+      - consentVersion
+    Capabilities:
+      type: object
+      properties:
+        navigation:
+          $ref: '#/components/schemas/NavigationAvailability'
+      required:
+      - navigation
+    Trip:
+      type: object
+      properties:
+        id: *id001
+        status: *id018
+        phase:
+          type: string
+          enum:
+          - DRIVING
+          - PARKED
+          - WALKING
+          - AT_DESTINATION
+          - RETURNING
+          - null
+          nullable: true
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+        planRevision:
+          type: integer
+          format: int64
+          minimum: 0
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        title:
+          type: string
+          nullable: true
+        destination:
+          $ref: '#/components/schemas/PlanningPlace'
+        deadlineAt:
+          type: string
+          format: date-time
+          nullable: true
+        arrivalBasis:
+          type: string
+          enum:
+          - PERSON
+          - VEHICLE
+        plannedStayMinutes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 10080
+          nullable: true
+        timeZone:
+          type: string
+        expiresAt: *id004
+        sharing:
+          anyOf:
+          - $ref: '#/components/schemas/SharingSession'
+          - type: object
+            nullable: true
+            enum:
+            - null
+        location:
+          anyOf:
+          - $ref: '#/components/schemas/Location'
+          - type: object
+            nullable: true
+            enum:
+            - null
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        capabilities:
+          $ref: '#/components/schemas/Capabilities'
+        serverTime: *id004
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/Stop'
+        viewer:
+          $ref: '#/components/schemas/Viewer'
+      required:
+      - id
+      - status
+      - phase
+      - revision
+      - planRevision
+      - version
+      - title
+      - destination
+      - deadlineAt
+      - arrivalBasis
+      - plannedStayMinutes
+      - timeZone
+      - expiresAt
+      - sharing
+      - location
+      - participants
+      - capabilities
+      - serverTime
+      - stops
+      - viewer
+      description: Permission-filtered snapshot. Location null without fresh <=120s point and both publisher publication
+        and viewer view consent. Participants empty without current collaboration consent. No raw secrets, proposal
+        collection or startsAt in this response. Terminal owner reads omit shared data.
+    Viewer:
+      type: object
+      required:
+      - participantId
+      - role
+      - isOwner
+      - clientType
+      properties:
+        participantId: *id002
+        role:
+          type: string
+          enum:
+          - DRIVER
+          - COMPANION
+        isOwner:
+          type: boolean
+        clientType:
+          type: string
+          enum:
+          - PHONE
+          - VEHICLE
+      description: Current authorized caller membership, not another participant identity. Ownership is separate
+        from travel role. Vehicle cannot become owner.
+    ProposalListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+          - DESTINATION
+          - STOP
+          - PARKING
+        decisionStatus:
+          type: string
+          enum:
+          - PENDING
+          - ACCEPTED
+          - DISMISSED
+          - CANCELLED
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        place:
+          $ref: '#/components/schemas/Place'
+        navigationCommand:
+          anyOf:
+          - $ref: '#/components/schemas/NavigationCommand'
+          - type: object
+            nullable: true
+            enum:
+            - null
+      required:
+      - id
+      - kind
+      - decisionStatus
+      - version
+      - place
+      - navigationCommand
+      description: Proposal decision and associated command outcome are separate. Null command means no acceptance
+        command exists.
+    ProposalList:
+      type: object
+      required:
+      - proposals
+      - nextCursor
+      - serverTime
+      properties:
+        proposals:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ProposalListItem'
+        nextCursor:
+          type: string
+          format: uuid
+          nullable: true
+        serverTime:
+          type: string
+          format: date-time
+      description: Newest first by created_at then id, restricted to current sharing generation. nextCursor is last
+        returned proposal id only when another page exists; null otherwise. Poll newest page again after reconnect,
+        not only old cursor pages.
+    OwnConsents:
+      type: object
+      required:
+      - sessionId
+      - generation
+      - version
+      - scopes
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        generation:
+          type: integer
+          format: int64
+          minimum: 1
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+        scopes:
+          type: object
+          properties:
+            TRIP_COLLABORATION: &id019
+              type: boolean
+            LOCATION_VIEW: *id019
+            LOCATION_PUBLISH: *id019
+          additionalProperties: false
+          required:
+          - TRIP_COLLABORATION
+          - LOCATION_VIEW
+          - LOCATION_PUBLISH
+      description: Complete active consent state for caller only, with all three booleans. Unlike consent PUT response,
+        this is not a partial update echo. version is participant consentVersion.
+  responses:
+    Error400:
+      description: Malformed or invalid fields.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: INVALID_REQUEST
+            message: Synthetic redacted error; inspect code and refresh when appropriate.
+    Error401:
+      description: Missing, invalid, expired or revoked credential.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: UNAUTHORIZED
+            message: Synthetic redacted error; inspect code and refresh when appropriate.
+    Error403:
+      description: Wrong trip, role, scope or consent.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: FORBIDDEN
+            message: Synthetic redacted error; inspect code and refresh when appropriate.
+    Error404:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: NOT_FOUND
+            message: Synthetic redacted error; inspect code and refresh when appropriate.
+    Error409:
+      description: State, version or idempotency conflict.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: VERSION_CONFLICT
+            message: Synthetic redacted error; inspect code and refresh when appropriate.
+    Error429:
+      description: Local safety limit exceeded.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: PAIRING_RATE_LIMIT
+            message: Synthetic redacted error; inspect code and refresh when appropriate.
+    Error412:
+      description: If-Match does not match current plan revision.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: PLAN_REVISION_CONFLICT
+            message: Synthetic redacted error; inspect code and refresh when appropriate.
+    Error428:
+      description: Required If-Match is missing.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: IF_MATCH_REQUIRED
+            message: Synthetic redacted error; inspect code and refresh when appropriate.
+    Error503:
+      description: External provider unavailable.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: ROUTING_UNAVAILABLE
+            message: Synthetic redacted error; inspect code and refresh when appropriate.
