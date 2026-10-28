@@ -1,0 +1,1028 @@
+openapi: 3.0.3
+info:
+  title: Yeouro app-only MVP API
+  version: 0.1.0
+  description: 'Authoritative first-slice contract. No Pleos SDK connection or background
+    delivery. All responses Cache-Control: no-store. Tokens are scoped bearer capabilities:
+    keep in memory for this slice, and encrypted device storage if later persisted;
+    never log or put them in URLs. Create/join return credentials once and must not
+    be automatically retried after an uncertain response. All times UTC ISO-8601.
+    Place coordinates must be both present or both null. Session lifetime 24h; one-time
+    invite 15m. First stage uses authenticated foreground polling, not SSE. Local
+    default server binds loopback; not an internet deployment.'
+servers:
+- url: http://localhost:8080/api/v1
+  description: Local development only
+paths:
+  /health:
+    get:
+      operationId: health
+      summary: Minimal liveness only
+      security: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '400':
+          description: Invalid input or missing consent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing, expired or revoked capability token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Wrong role or trip scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: State/version conflict, expired/consumed invite, stale location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Local safety limits exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /trips:
+    post:
+      operationId: createTrip
+      summary: Create a 24-hour trip; credentials are returned once
+      security: []
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '400':
+          description: Invalid input or missing consent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing, expired or revoked capability token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Wrong role or trip scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: State/version conflict, expired/consumed invite, stale location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Local safety limits exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTripRequest'
+  /trips/{tripId}:
+    get:
+      operationId: getTrip
+      summary: Poll only while foregrounded; recommend every 5 seconds
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '400':
+          description: Invalid input or missing consent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing, expired or revoked capability token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Wrong role or trip scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: State/version conflict, expired/consumed invite, stale location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Local safety limits exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: &id001
+          type: string
+          format: uuid
+  /trips/{tripId}/invites:
+    post:
+      operationId: createInvite
+      summary: Owner explicitly consents to this trip sharing; one-time invite valid
+        15 minutes
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteResponse'
+        '400':
+          description: Invalid input or missing consent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing, expired or revoked capability token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Wrong role or trip scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: State/version conflict, expired/consumed invite, stale location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Local safety limits exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentRequest'
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+  /invites/join:
+    post:
+      operationId: joinInvite
+      summary: Redeem one-time invite with explicit participant consent; token returned
+        once
+      security: []
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '400':
+          description: Invalid input or missing consent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing, expired or revoked capability token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Wrong role or trip scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: State/version conflict, expired/consumed invite, stale location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Local safety limits exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinRequest'
+  /trips/{tripId}/readiness:
+    put:
+      operationId: updateReadiness
+      summary: Participant readiness; repeated identical PUT is safe
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '400':
+          description: Invalid input or missing consent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing, expired or revoked capability token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Wrong role or trip scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: State/version conflict, expired/consumed invite, stale location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Local safety limits exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadinessRequest'
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+  /trips/{tripId}/proposals:
+    post:
+      operationId: submitProposal
+      summary: Participant proposal; requestId deduplicated within participant/trip
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '400':
+          description: Invalid input or missing consent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing, expired or revoked capability token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Wrong role or trip scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: State/version conflict, expired/consumed invite, stale location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Local safety limits exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProposalRequest'
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+  /trips/{tripId}/proposals/{proposalId}/decision:
+    post:
+      operationId: decideProposal
+      summary: Owner/driver accept only requests application; use proposal version
+        for concurrency
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '400':
+          description: Invalid input or missing consent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing, expired or revoked capability token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Wrong role or trip scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: State/version conflict, expired/consumed invite, stale location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Local safety limits exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - name: proposalId
+        in: path
+        required: true
+        schema: *id001
+  /trips/{tripId}/proposals/{proposalId}/navigation-result:
+    post:
+      operationId: reportNavigationResult
+      summary: Owner/driver reports gateway result; APPLIED rejected while integration
+        unavailable; DEMO_APPLIED is not real navigation
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '400':
+          description: Invalid input or missing consent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing, expired or revoked capability token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Wrong role or trip scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: State/version conflict, expired/consumed invite, stale location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Local safety limits exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NavigationResultRequest'
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+      - name: proposalId
+        in: path
+        required: true
+        schema: *id001
+  /trips/{tripId}/location:
+    put:
+      operationId: uploadLocation
+      summary: Owner/driver only while sharing; maximum age 2 minutes, future skew
+        30 seconds; strict newer observedAt
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '400':
+          description: Invalid input or missing consent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing, expired or revoked capability token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Wrong role or trip scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: State/version conflict, expired/consumed invite, stale location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Local safety limits exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Location'
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+  /trips/{tripId}/sharing/revoke:
+    post:
+      operationId: revokeSharing
+      summary: Owner revokes invites/participant tokens, clears location, cancels
+        pending commands
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '400':
+          description: Invalid input or missing consent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing, expired or revoked capability token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Wrong role or trip scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: State/version conflict, expired/consumed invite, stale location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Local safety limits exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+  /trips/{tripId}/end:
+    post:
+      operationId: endTrip
+      summary: Owner/driver ends trip and revokes sharing; repeated end is safe for
+        owner
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '400':
+          description: Invalid input or missing consent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing, expired or revoked capability token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Wrong role or trip scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: State/version conflict, expired/consumed invite, stale location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Local safety limits exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema: *id001
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Health:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - UP
+      additionalProperties: false
+    Place:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          nullable: true
+      additionalProperties: false
+    CreateTripRequest:
+      type: object
+      required:
+      - destination
+      properties:
+        destination:
+          $ref: '#/components/schemas/Place'
+      additionalProperties: false
+    ConsentRequest:
+      type: object
+      required:
+      - consent
+      - role
+      properties:
+        consent: &id002
+          type: boolean
+        role:
+          type: string
+          enum:
+          - DRIVER
+          - COMPANION
+      additionalProperties: false
+    JoinRequest:
+      type: object
+      required:
+      - code
+      - displayName
+      - consent
+      properties:
+        code:
+          type: string
+          minLength: 20
+          maxLength: 64
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 40
+        consent: *id002
+      additionalProperties: false
+    ReadinessRequest:
+      type: object
+      required:
+      - ready
+      properties:
+        ready: *id002
+      additionalProperties: false
+    ProposalRequest:
+      type: object
+      required:
+      - requestId
+      - place
+      properties:
+        requestId: *id001
+        place:
+          $ref: '#/components/schemas/Place'
+      additionalProperties: false
+    DecisionRequest:
+      type: object
+      required:
+      - decision
+      - expectedVersion
+      properties:
+        decision:
+          type: string
+          enum:
+          - ACCEPT
+          - DISMISS
+        expectedVersion:
+          type: integer
+          format: int64
+          minimum: 0
+      additionalProperties: false
+    NavigationResultRequest:
+      type: object
+      required:
+      - outcome
+      properties:
+        outcome:
+          type: string
+          enum:
+          - APPLIED
+          - FAILED
+          - DEMO_APPLIED
+        reason:
+          type: string
+          maxLength: 200
+          nullable: true
+      additionalProperties: false
+    Location:
+      type: object
+      required:
+      - latitude
+      - longitude
+      - accuracyMeters
+      - observedAt
+      - source
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        accuracyMeters:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 10000
+        observedAt: &id003
+          type: string
+          format: date-time
+        source:
+          type: string
+          enum:
+          - PHONE
+          - VEHICLE
+          - SIMULATED
+      additionalProperties: false
+    Participant:
+      type: object
+      required:
+      - id
+      - displayName
+      - role
+      - ready
+      properties:
+        id: *id001
+        displayName:
+          type: string
+        role:
+          type: string
+          enum:
+          - DRIVER
+          - COMPANION
+        ready: *id002
+      additionalProperties: false
+    Proposal:
+      type: object
+      required:
+      - id
+      - participantId
+      - place
+      - status
+      - version
+      - resultReason
+      properties:
+        id: *id001
+        participantId: *id001
+        place:
+          $ref: '#/components/schemas/Place'
+        status:
+          type: string
+          enum:
+          - PENDING
+          - APPLY_REQUESTED
+          - DISMISSED
+          - APPLIED
+          - FAILED
+          - DEMO_APPLIED
+          - CANCELLED
+        version:
+          type: integer
+          format: int64
+        resultReason:
+          type: string
+          nullable: true
+      additionalProperties: false
+    NavigationStatus:
+      type: object
+      required:
+      - provider
+      - availability
+      - reason
+      properties:
+        provider:
+          type: string
+          enum:
+          - PLEOS
+        availability:
+          type: string
+          enum:
+          - UNAVAILABLE
+        reason:
+          type: string
+          enum:
+          - SDK_NOT_CONNECTED
+      additionalProperties: false
+    Trip:
+      type: object
+      required:
+      - id
+      - destination
+      - status
+      - sharingEnabled
+      - version
+      - expiresAt
+      - participants
+      - proposals
+      - location
+      - navigation
+      properties:
+        id: *id001
+        destination:
+          $ref: '#/components/schemas/Place'
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - ENDED
+        sharingEnabled: *id002
+        version:
+          type: integer
+          format: int64
+        expiresAt: *id003
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        proposals:
+          type: array
+          items:
+            $ref: '#/components/schemas/Proposal'
+        location:
+          allOf:
+          - $ref: '#/components/schemas/Location'
+          nullable: true
+        navigation:
+          $ref: '#/components/schemas/NavigationStatus'
+      additionalProperties: false
+    SessionResponse:
+      type: object
+      required:
+      - trip
+      - accessToken
+      - role
+      - participantId
+      - expiresAt
+      properties:
+        trip:
+          $ref: '#/components/schemas/Trip'
+        accessToken:
+          type: string
+        role:
+          type: string
+          enum:
+          - OWNER
+          - DRIVER
+          - COMPANION
+        participantId:
+          type: string
+          format: uuid
+          nullable: true
+        expiresAt: *id003
+      additionalProperties: false
+    InviteResponse:
+      type: object
+      required:
+      - code
+      - expiresAt
+      properties:
+        code:
+          type: string
+        expiresAt: *id003
+      additionalProperties: false
+    Error:
+      type: object
+      required:
+      - code
+      - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      additionalProperties: false
