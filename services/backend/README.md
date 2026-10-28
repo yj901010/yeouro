@@ -1,4 +1,53 @@
-# 여유로 backend — first app-only vertical slice
+# 여유로 backend v2
+
+Java 21 / Spring Boot modular monolith with real PostgreSQL migrations and a separate v2 contract. This is implementation and local validation, not a deployed Supabase service, configured sign-in UI, or connected Pleos runtime.
+
+## Current boundaries
+
+- `contracts/openapi-v2.yaml` is the implemented v2 contract; `docs/design/BACKEND_V2.md` is the broader approved design. Actual differences and postponed endpoints are listed in `docs/v2/API_CONTRACT.md`.
+- Phone requests validate configured JWT signature, issuer, expiry and audience. RS256/ES256 are allowed; missing issuer/JWKS returns `AUTH_NOT_CONFIGURED`. No anonymous production identity or trusted user-id header exists.
+- Supabase Auth is an integration candidate, not a configured external account. One trusted issuer is supported. App user UUIDs map to validated subjects without creating or changing Supabase's managed `auth` schema.
+- Ownership and DRIVER/COMPANION membership are separate. Sharing publication/view/collaboration consents and vehicle scopes are checked for each request.
+- Vehicle pairing uses a separate poll secret and one-time scoped credential (maximum 12 hours, also bounded by trip/session expiry). Installation IDs are not ownership proof and cannot revoke other pending pairings.
+- Locations are latest-point only. Revocation and expiry deny access synchronously; minute-based cleanup is supplemental.
+- Real navigation always reports unavailable until the actual adapter is verified. Comparison fixtures and DEMO navigation require explicit `yeouro.v2.demo-enabled=true`, default false. REAL routing returns unavailable, not synthetic success.
+- Phase/parking confirmation and return-reminder plans are persisted. A plan or client `SCHEDULED` report is not proof an OS notification appeared. No background push scheduler is promised on sleeping free hosting.
+
+## Local PostgreSQL validation
+
+Use a full JDK 21 and PostgreSQL 17 binaries. From repository root:
+
+```sh
+PG_BIN=/path/to/postgresql/bin scripts/run-postgres-tests.sh
+```
+
+The script creates a fresh, loopback-only, trust-authenticated disposable cluster, runs Maven tests, then stops and removes it. It is only for synthetic local tests, never production. Alternatively supply the dedicated local test DB using `TEST_DATABASE_URL`, `TEST_DATABASE_USERNAME`, and `TEST_DATABASE_PASSWORD` (loopback URL with an explicit port and a database name ending `_test`; production `DATABASE_*` values are ignored) and run `sh ./mvnw test` from this directory. Integration tests require PostgreSQL and must not silently skip. Never point tests at a live service database: fixtures include destructive cleanup. CI provides a dedicated PostgreSQL database. Legacy v1 tests still use H2; passing H2 is not the v2 verification gate.
+
+For manually running the v2 API against an existing local PostgreSQL DB:
+
+```sh
+export DATABASE_URL=jdbc:postgresql://127.0.0.1:5432/yeouro
+export DATABASE_USERNAME=yeouro_app
+# Supply DATABASE_PASSWORD through your private environment, not source control.
+export PHONE_JWT_ISSUER=https://YOUR_PROJECT.supabase.co/auth/v1
+export PHONE_JWT_JWKS_URI=https://YOUR_PROJECT.supabase.co/auth/v1/.well-known/jwks.json
+export PHONE_JWT_AUDIENCE=authenticated
+sh ./mvnw spring-boot:run -Dspring-boot.run.profiles=v2
+```
+
+These URLs are templates, not deployed configuration. Use your provider's verified project settings and a real phone login flow. Never enter a service-role key or database password as the phone access token. The server stays loopback-bound by default. Account connection, credential grants, external ingress and deployment are separate setup steps.
+
+## Before public deployment
+
+Keep business tables in the non-exposed `app` schema, disable unused Supabase Data API access, and audit grants. Separate migration DDL permissions from runtime DML permissions. JDBC does not automatically inherit a phone JWT's `auth.uid()` context. Test restrictive roles, TLS and connection pool settings against the actual provider, not just local PostgreSQL.
+
+Use HTTPS, external abuse/IP rate limits, a private secret store, bounded pools, log redaction, and tested data deletion. Built-in pairing caps are not a public-internet abuse defense. Account deletion, role transfer and user-operated command reconciliation remain postponed; unresolved SDK effects block further commands instead of blindly retrying them.
+
+For free Supabase, prepare regular exported backups, an off-site copy and a restore rehearsal; do not assume paid-plan automatic daily restores. Keep only synthetic demo seed data in source. Never publish real locations, credentials or database dumps. Render free hosting can sleep or suspend on usage limits, including unusually high external DB/API traffic. Rehearse cold starts and degraded UI; do not promise constant availability.
+
+Official operational references: [Supabase backups](https://supabase.com/docs/guides/platform/backups), [Data API security](https://supabase.com/docs/guides/api/securing-your-api), [Render free limits](https://render.com/docs/free).
+
+# Legacy v1 local demo reference
 
 Java 21 / Spring Boot 4.0.8 modular monolith. This is a **working local REST service**, not a deployed service or a connected Pleos integration. The original browser prototype is separate.
 
@@ -8,7 +57,8 @@ Install a full JDK 21 (a JRE alone is insufficient). The checked-in official Mav
 
 ```sh
 cd services/backend
-./mvnw test
+./mvnw -Dtest=TripApiTest test
+# Full test/package requires the isolated PostgreSQL test setup above.
 ./mvnw package
 java -jar target/backend-0.1.0-SNAPSHOT.jar
 # GET http://127.0.0.1:8080/api/v1/health -> {"status":"UP"}
@@ -18,7 +68,7 @@ The default server binds **127.0.0.1**. H2 stores state in `data/yeouro` under t
 
 For a trusted Android emulator/dev LAN test, explicitly set `SERVER_ADDRESS=0.0.0.0`; this exposes the service to that network. Do not expose this local-development profile to the internet. Use `adb reverse tcp:8080 tcp:8080` when appropriate rather than exposing an interface unnecessarily. Native release builds must use HTTPS.
 
-`application-prod.yaml` selects PostgreSQL using `DATABASE_URL` (JDBC URL), `DATABASE_USERNAME`, and `DATABASE_PASSWORD`. Flyway owns schema creation; Hibernate only validates it. This profile is scaffolding, **not a verified PostgreSQL deployment**. TLS termination, managed credentials, ingress limits, account/device authentication, observability/redaction, backups, operational deletion and a real PostgreSQL test are required before external deployment.
+`application-prod.yaml` now enables v2 and disables this legacy v1 HTTP surface. It selects PostgreSQL using `DATABASE_URL` (JDBC URL), `DATABASE_USERNAME`, and `DATABASE_PASSWORD`. Local PostgreSQL migrations are verified; actual Supabase deployment and restrictive runtime roles are not. TLS termination, managed credentials, ingress limits, account/device authentication, observability/redaction, backups, operational deletion and a real PostgreSQL test are required before external deployment.
 
 ## Authoritative contract
 

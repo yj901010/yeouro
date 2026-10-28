@@ -10,12 +10,25 @@
 | `apps/android/phone-app` | 운전자·동행자 공용 Android 앱 |
 | `apps/android/core-*` | 공통 모델·계약·통신·도메인·UI 모듈 |
 | `services/backend` | Java 21 / Spring Boot 모듈형 단일 서버 |
-| `contracts/openapi.yaml` | 서버·앱 API 규격 |
+| `contracts/openapi.yaml` | 기존 v1 로컬 데모 API 규격 |
+| `contracts/openapi-v2.yaml` | PostgreSQL·계정 기반 v2 구현 API 규격 |
+| `docs/design/BACKEND_V2.md` | DB·API 목표 설계 |
+| `docs/v2/API_CONTRACT.md` | 실제 구현과 목표 설계의 차이 |
 | `prototype` | 기존 브라우저 UI 검토용 프로토타입 (제품 웹 앱 아님) |
 | `docs/ARCHITECTURE.md` | 구조와 기능 경계 |
-| `scripts/smoke-local.py` | 로컬 HTTP 연동 점검 |
+| `scripts/smoke-local.py` | 기존 v1 로컬 HTTP 연동 점검 |
+| `scripts/run-postgres-tests.sh` | 격리된 PostgreSQL 전체 검증 |
+| `scripts/smoke-native-v2.py` | 실제 Kotlin v1/v2 HTTP 계약 검증 |
 
-## 첫 구현 범위
+## 새 백엔드 v2
+
+v2는 계정 JWT 검증, 역할별 공유·동의, 차량 페어링, PostgreSQL 제약/트랜잭션, 장소 제안/명령 상태, 마감·체류·명시적 데모 ETA 비교, 주차 확인·로컬 알림 계획을 구현합니다. v1과 호환된다고 가정하지 마세요. Supabase 계정·실제 로그인·지도/차량 SDK·외부 배포는 아직 연결하지 않았습니다.
+
+Android에는 별도 `V2PhoneRepository`와 wire 모델을 추가했습니다. 현재 화면은 여전히 v1을 사용하며 v2 로그인 화면·사용자 여정으로 전환하지 않았습니다. 이번 변경으로 완성된 디자인이나 차량 동작이 검증된 APK가 만들어졌다는 뜻이 아닙니다.
+
+실제 PostgreSQL 검증: `PG_BIN=/path/to/postgresql/bin scripts/run-postgres-tests.sh`. 상세 설정은 `services/backend/README.md`와 `docs/v2/VERIFICATION.md`를 참고하세요.
+
+## 기존 v1 첫 구현 범위
 
 이동 생성, 역할별 초대·참여, 준비 상태, 장소 제안과 운전자 승인, 내비 적용 결과의 구분, 명시적인 가상 위치 전송, 공유 철회·이동 종료를 연결합니다.
 
@@ -31,7 +44,7 @@ Java 21이 필요합니다. 상세 설정과 프로필은 `services/backend/READ
 
 ```sh
 cd services/backend
-sh ./mvnw test
+sh ./mvnw -Dtest=TripApiTest test
 sh ./mvnw spring-boot:run
 ```
 
@@ -71,4 +84,4 @@ python3 -m http.server 8081 --directory dist
 
 ## 검증
 
-최신 실제 실행 결과와 미검증 항목은 `docs/VERIFICATION.md`에 기록합니다. 코드 작성, 컴파일, APK 생성, 에뮬레이터 실행, 실차 검증은 각각 다른 단계입니다.
+기존 APK 검증은 `docs/VERIFICATION.md`, 이번 v2 백엔드·통신 계층 검증은 `docs/v2/VERIFICATION.md`에 구분해서 기록합니다. 코드 작성, 컴파일, APK 생성, 에뮬레이터 실행, 실차 검증은 각각 다른 단계입니다.

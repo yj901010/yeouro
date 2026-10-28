@@ -19,6 +19,13 @@ public class ApiErrors {
         // Never reflect payloads: they may contain invite codes, credentials, or exact coordinates.
         return ResponseEntity.badRequest().body(new ApiModels.Error("INVALID_REQUEST", "Request fields are missing or invalid."));
     }
+    @ExceptionHandler(org.springframework.web.bind.MissingRequestHeaderException.class)
+    ResponseEntity<ApiModels.Error> missingHeader(org.springframework.web.bind.MissingRequestHeaderException ex) {
+        boolean authentication = ex.getHeaderName().equalsIgnoreCase("Authorization")
+                || ex.getHeaderName().equalsIgnoreCase("X-Pairing-Poll-Secret");
+        return ResponseEntity.status(authentication ? HttpStatus.UNAUTHORIZED : HttpStatus.BAD_REQUEST)
+                .body(new ApiModels.Error(authentication ? "UNAUTHORIZED" : "INVALID_REQUEST", "A required request header is missing."));
+    }
     @ExceptionHandler(ConcurrencyFailureException.class)
     ResponseEntity<ApiModels.Error> conflict(Exception ignored) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiModels.Error("CONCURRENT_UPDATE", "Refresh the trip and try again."));
