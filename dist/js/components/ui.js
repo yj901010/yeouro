@@ -105,7 +105,7 @@ export function heading(eyebrow, title, subtitle = "", trailing = "") {
   return `
     <div class="heading-row">
       <div>
-        <p class="eyebrow">${eyebrow}</p>
+        ${eyebrow ? `<p class="eyebrow">${eyebrow}</p>` : ""}
         <h1>${title}</h1>
         ${subtitle ? `<p>${subtitle}</p>` : ""}
       </div>
@@ -135,7 +135,7 @@ export function summaryStats(summary) {
     : "도착 기준";
   const marginValue = summary.hasDeadline
     ? `${Math.abs(summary.margin)}<em>분</em>`
-    : "자유롭게";
+    : "시간 미설정";
 
   return `
     <div class="summary-stats">

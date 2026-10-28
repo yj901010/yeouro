@@ -13,7 +13,7 @@ function renderShareConsent(state) {
   return `
     <section class="panel">
       <div class="callout-icon">${icon("share", 27)}</div>
-      <h2>도착을 함께 기다리는 방법</h2>
+      <h2>이동 정보 공유</h2>
       <p>민지에게 이 이동의 차량 위치와 도착 시간만 공유해요. 이동이 끝나거나 철회하면 공유가 멈춰요.</p>
       <div class="divider"></div>
       ${notice("여기서는 가상의 민지와 모의 위치만 사용합니다. 계정 연결이나 외부 전송은 없어요.")}
@@ -80,7 +80,7 @@ function renderPrivacyCard() {
       <div class="person-line">
         <span class="icon-box">${icon("shield")}</span>
         <div>
-          <h3>이번 이동에서만, 필요한 만큼</h3>
+          <h3>공유 범위</h3>
           <p>취소·이동 종료·픽업 완료 시 공유를 멈춰요.<br>다음 이동으로 동의를 넘기지 않아요.</p>
         </div>
       </div>
@@ -97,7 +97,7 @@ export function renderTogether(state) {
       ? renderDriverShareStatus(state, summary)
       : renderShareConsent(state);
   return `
-    ${heading("A JOURNEY, SHARED", "함께 가는 마음까지.", "기다리는 사람에게는 도착을, 운전자에게는 준비 상태를.")}
+    ${heading("", "동행", "이동 위치와 도착 예상 시간을 공유합니다.")}
     <div class="grid">
       <div class="stack">${statusPanel}</div>
       <div class="stack">
@@ -150,7 +150,7 @@ function renderProposalCard(state) {
 
 function renderNoSharedTrip() {
   return `
-    ${heading("COMPANION VIEW", "민지의 화면", "동행자의 휴대폰을 가정한 브라우저 미리보기")}
+    ${heading("", "동행 이동 정보", "동행자의 휴대폰을 가정한 브라우저 미리보기")}
     <section class="panel empty-state">
       <span class="icon-box">${icon("lock", 31)}</span>
       <h2>공유 중인 이동이 없어요</h2>
@@ -190,11 +190,11 @@ export function renderCompanion(state) {
   if (!state.share) return renderNoSharedTrip();
   const summary = getTripSummary(state);
   return `
-    ${heading("COMPANION VIEW", "조금만 기다려요, 가고 있어요.", "민지의 휴대폰 · 모든 위치와 시간은 모의 데이터", tag("이 이동만 공유", "mint"))}
+    ${heading("", "동행 이동 정보", "민지의 휴대폰 · 모든 위치와 시간은 모의 데이터", tag("이 이동만 공유", "mint"))}
     <div class="grid companion-grid">
       <div class="stack">
         ${renderMap({ active: true, companion: true, progress: state.progress })}
-        <p class="tiny">차량 아이콘은 데모 애니메이션입니다. 실제 위치 갱신을 의미하지 않습니다.</p>
+        <p class="tiny">차량 위치는 모의 정보입니다. 아래 버튼으로 갱신할 수 있습니다.</p>
         ${button("모의 위치 한 단계 갱신", "ADVANCE_DEMO", { kind: "ghost", icon: "reset" })}
       </div>
       <div class="stack">

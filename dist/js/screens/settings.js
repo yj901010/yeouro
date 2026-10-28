@@ -17,7 +17,7 @@ function renderLearningPanel(state) {
       </div>
       <div class="toggle-row">
         <div>
-          <h3>내 이동에서 배우기</h3>
+          <h3>장소 학습 사용</h3>
           <p>자주 가는 장소와 도보 시간을 기억하기 위한 선택 동의</p>
         </div>
         ${toggle(state.learning, "SET_LEARNING", "장소 학습 동의")}
@@ -65,13 +65,13 @@ function renderComfortPanel(state) {
   return `
     <section class="panel">
       <div class="panel-head">
-        <h2>잠깐, 편안한 온도</h2>
+        <h2>차량 온도 미리보기</h2>
         ${tag("제어 안 함", "amber")}
       </div>
       <div class="feature-content">
         <span class="icon-box">${icon("temperature", 25)}</span>
         <div>
-          <h3>${state.comfort ? "22°C · 미리보기 중" : "나에게 맞춘 일시 설정"}</h3>
+          <h3>${state.comfort ? "22°C · 미리보기 중" : "온도·시트 설정"}</h3>
           <p>온도·시트 설정을 제안하는 흐름만 보여줘요.</p>
         </div>
       </div>
@@ -95,7 +95,7 @@ function renderSdkReferenceCard() {
       <div class="feature-content">
         <span class="icon-box">${icon("book", 22)}</span>
         <div>
-          <h3>프로토타입과 실제 SDK 사이</h3>
+          <h3>구현 범위</h3>
           <p>확인된 문서와 아직 검증이 필요한 기능을 구분했어요.</p>
         </div>
       </div>
@@ -106,7 +106,7 @@ function renderSdkReferenceCard() {
 
 export function renderSettings(state) {
   return `
-    ${heading("MAKE ROOM FOR YOU", "내게 맞는, 적당한 배려.", "자동으로 결정하지 않고, 먼저 물어볼게요.")}
+    ${heading("", "설정", "장소 학습 동의와 차량 기능을 설정합니다.")}
     <div class="settings-grid">
       <div class="stack">
         ${renderLearningPanel(state)}

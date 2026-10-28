@@ -1,28 +1,28 @@
 :root {
-  /* Light: cool ceramic surfaces, graphite typography, a restrained mint signal. */
+  /* Functional navigation UI: neutral surfaces, blue reserved for actions and route state. */
   color-scheme: light;
-  --ink: #162334;
-  --muted: #5e6d80;
-  --line: #dfe5ed;
-  --line-strong: #c5d0dc;
-  --workspace: #eaf0f6;
-  --canvas: #f5f7fb;
+  --ink: #20242b;
+  --muted: #626973;
+  --line: #e1e4e8;
+  --line-strong: #c5cbd3;
+  --workspace: #f0f1f3;
+  --canvas: #f6f7f8;
   --surface: #ffffff;
-  --surface-muted: #edf2f7;
-  --surface-hover: #f0f6f7;
+  --surface-muted: #f1f3f5;
+  --surface-hover: #f4f6f9;
   --surface-glass: #ffffffed;
-  --accent: #24866f;
-  --accent-text: #267762;
-  --accent-soft: #e9f5f0;
-  --accent-hover: #99ddc5;
-  --accent-ink: #123f34;
-  --mint: #b2ead5;
+  --accent: #246bfd;
+  --accent-text: #1955cc;
+  --accent-soft: #edf3ff;
+  --accent-hover: #1b59dc;
+  --accent-ink: #ffffff;
+  --mint: #8db2ff;
   --mint-dark: var(--accent-text);
-  --navy: #15283c;
-  --navy-raised: #233d55;
+  --navy: #20242b;
+  --navy-raised: #2d333c;
   --inverse: #f6f9ff;
-  --inverse-muted: #b6c7d9;
-  --inverse-line: #35495d;
+  --inverse-muted: #c1c6ce;
+  --inverse-line: #434953;
   --warning-text: #866020;
   --warning-text-inverse: #f5c785;
   --warning-soft: #fff4e0;
@@ -31,18 +31,18 @@
   --danger-soft: #fff4f2;
   --danger-line: #efd3cd;
   --switch-knob: #ffffff;
-  --shadow-color: #14243a0b;
+  --shadow-color: #00000000;
   --scrim: #09142466;
   --paper: var(--canvas);
   --orange: var(--warning-text);
-  --radius: 16px;
-  --map-ground: #e8eef4;
-  --map-block: #dce7e5;
-  --map-river-edge: #cbdce8;
-  --map-river: #d5e4ef;
-  --map-road: #f9fbff;
-  --map-road-line: #d4dee8;
-  --map-label: #64798b;
+  --radius: 10px;
+  --map-ground: #eef0f2;
+  --map-block: #dfe5df;
+  --map-river-edge: #c9ddea;
+  --map-river: #d9e9f4;
+  --map-road: #ffffff;
+  --map-road-line: #d7dce0;
+  --map-label: #69716f;
 
   font-family:
     Inter,
@@ -59,27 +59,27 @@
 /* The app state owns the switch; tokens inherit across the entire page, including drawers. */
 :root:has(.app-wrap.night) {
   color-scheme: dark;
-  --ink: #edf3fb;
-  --muted: #a5b3c6;
-  --line: #2a3749;
-  --line-strong: #43536a;
-  --workspace: #0b111c;
-  --canvas: #101a28;
-  --surface: #182434;
-  --surface-muted: #202e40;
-  --surface-hover: #23364a;
-  --surface-glass: #172538ed;
-  --accent: #82d9ba;
-  --accent-text: #9bddc6;
-  --accent-soft: #1b3836;
-  --accent-hover: #b5ecd8;
-  --accent-ink: #103a30;
-  --mint: #9fe2c9;
-  --navy: #0c1727;
-  --navy-raised: #1a3049;
+  --ink: #f0f1f3;
+  --muted: #adb2ba;
+  --line: #30343b;
+  --line-strong: #505660;
+  --workspace: #0e1013;
+  --canvas: #121418;
+  --surface: #1b1e23;
+  --surface-muted: #252930;
+  --surface-hover: #2d323b;
+  --surface-glass: #1b1e23f5;
+  --accent: #246bfd;
+  --accent-text: #8eb4ff;
+  --accent-soft: #1c2b46;
+  --accent-hover: #377aff;
+  --accent-ink: #ffffff;
+  --mint: #8eb4ff;
+  --navy: #16191e;
+  --navy-raised: #242931;
   --inverse: #f4f8ff;
-  --inverse-muted: #aebfd5;
-  --inverse-line: #2c415b;
+  --inverse-muted: #b1b7c0;
+  --inverse-line: #343a44;
   --warning-text: #efc883;
   --warning-soft: #392f23;
   --warning-line: #645236;
@@ -88,13 +88,13 @@
   --danger-line: #684249;
   --shadow-color: #00000030;
   --scrim: #02070cb3;
-  --map-ground: #172637;
-  --map-block: #213b40;
-  --map-river-edge: #213e56;
-  --map-river: #284a61;
-  --map-road: #304257;
-  --map-road-line: #3b5065;
-  --map-label: #a3b9cb;
+  --map-ground: #20242a;
+  --map-block: #2a3730;
+  --map-river-edge: #263d4d;
+  --map-river: #2a485b;
+  --map-road: #414751;
+  --map-road-line: #535a64;
+  --map-label: #adb6bf;
 }
 
 * {
@@ -421,7 +421,10 @@ p {
   padding: 23px;
 }
 .panel.dark {
-  background: linear-gradient(125deg, var(--navy), var(--navy-raised));
+  background: var(--surface);
+  --inverse: var(--ink);
+  --inverse-muted: var(--muted);
+  --inverse-line: var(--line);
   border-color: var(--inverse-line);
   color: var(--inverse);
 }
@@ -492,7 +495,6 @@ p {
 .destination:hover {
   border-color: var(--accent);
   background: var(--surface-hover);
-  transform: translateY(-2px);
 }
 .destination .icon-box {
   width: 41px;
@@ -694,7 +696,7 @@ p {
   margin-bottom: 8px;
 }
 .stat.accent {
-  color: var(--mint);
+  color: var(--accent-text);
 }
 .stat.accent strong {
   font-size: 27px;
@@ -732,9 +734,9 @@ p {
   border-color: var(--accent);
 }
 .btn.primary {
-  background: var(--mint);
-  border-color: var(--mint);
-  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
 }
 .btn.primary:hover {
   background: var(--accent-hover);
@@ -1509,7 +1511,7 @@ p {
     "M 95 320 L 205 320 L 205 240 L 360 240 L 360 120 L 470 120"
   );
   offset-distance: 10%;
-  animation: demo-car 24s ease-in-out infinite;
+  animation: none;
   transform-box: fill-box;
   transform-origin: center;
   offset-rotate: 0deg;
@@ -2163,4 +2165,205 @@ p {
 .stat strong,
 .parking-option .price {
   font-variant-numeric: tabular-nums;
+}
+
+/* Reference-led refinement: preserve task positions, remove promotional chrome. */
+.workbar {
+  margin-bottom: 16px;
+}
+.wordmark {
+  font-size: 23px;
+  letter-spacing: -1px;
+}
+.wordmark small {
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.logo {
+  background: transparent;
+  color: var(--ink);
+  width: 28px;
+}
+.app-frame,
+.panel,
+.locked,
+.btn.primary,
+.segmented button[aria-pressed="true"] {
+  box-shadow: none;
+}
+.app-frame {
+  border-radius: 12px;
+}
+.app-header {
+  padding-block: 17px;
+}
+.app-brand .symbol {
+  color: var(--ink);
+}
+.app-main {
+  padding-top: 24px;
+}
+.heading-row {
+  margin-bottom: 22px;
+}
+.heading-row h1 {
+  font-size: 26px;
+  letter-spacing: -0.8px;
+  margin-bottom: 6px;
+}
+.heading-row > div > p {
+  font-size: 13px;
+}
+.panel {
+  border-radius: 10px;
+}
+.panel.dark {
+  border-color: var(--line);
+}
+.panel.mint,
+.drive-card,
+.ready-card,
+.inline-notice:not(.amber),
+.notice-banner {
+  background: var(--surface-muted);
+}
+.intro-panel {
+  padding: 20px 23px;
+  min-height: 166px;
+}
+.intro-panel:after,
+.place-art:after {
+  content: none;
+}
+.intro-panel h2 {
+  font-size: 16px;
+  margin: 0 0 6px;
+  max-width: none;
+}
+.intro-panel .feature-row {
+  font-size: 13px;
+  padding: 13px 0;
+}
+.intro-panel .feature-row span {
+  color: var(--muted);
+}
+.intro-panel .feature-row strong {
+  font-weight: 500;
+}
+.destination,
+.search-button,
+.map,
+.btn,
+.choice-row {
+  border-radius: 9px;
+}
+.destination {
+  min-height: 144px;
+  background: var(--surface-muted);
+  border-color: transparent;
+  transition: none;
+}
+.destination .icon-box {
+  color: var(--ink);
+  background: transparent;
+}
+.destination:hover {
+  border-color: var(--line-strong);
+}
+.app-main .destination strong {
+  font-size: 18px;
+}
+.search-button {
+  background: var(--surface);
+  border-color: var(--line-strong);
+}
+.app-main .search-button {
+  color: var(--ink);
+}
+.icon-box {
+  color: var(--muted);
+  border-radius: 8px;
+}
+.map-overlay {
+  border-radius: 8px;
+  padding: 13px 15px;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+}
+.map-label,
+.map-key {
+  border-radius: 5px;
+}
+.map-pin-note {
+  color: var(--muted);
+}
+.map svg [fill="#b8e6c9"],
+.map svg [fill="#b4e8cb"] {
+  fill: var(--accent-soft);
+}
+.map svg [fill="#183a32"],
+.map svg [fill="#204e3d"],
+.map svg [fill="#254b3b"] {
+  fill: var(--accent);
+}
+.map svg [stroke="#b9e9cb"] {
+  stroke: #ffffff;
+}
+.app-main .stat small {
+  color: var(--muted);
+}
+.stat strong {
+  font-weight: 700;
+}
+.stat.accent {
+  color: var(--accent-text);
+}
+.place-card .place-art {
+  height: 64px;
+  justify-content: flex-start;
+  padding-left: 16px;
+  border-radius: 8px;
+}
+.place-card .place-art svg {
+  width: 32px;
+  height: 32px;
+}
+.callout-icon {
+  border-radius: 10px;
+}
+.section-label {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.app-main .btn,
+.app-main .time-field,
+.drawer .close-btn {
+  min-height: 56px;
+}
+.drawer .close-btn {
+  min-width: 56px;
+}
+@media (min-width: 1400px) {
+  .intro-panel {
+    min-height: 166px;
+  }
+  .destination {
+    min-height: 144px;
+  }
+}
+@media (max-width: 760px) {
+  .heading-row h1 {
+    font-size: 24px;
+  }
+  .panel {
+    border-radius: 10px;
+  }
+  .intro-panel {
+    padding: 18px 20px;
+    min-height: 160px;
+  }
+  .destination {
+    min-height: 136px;
+  }
 }

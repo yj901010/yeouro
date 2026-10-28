@@ -22,8 +22,8 @@ function renderMapBackground() {
     </g>
     <g fill="#7b9173" font-size="10" font-family="sans-serif">
       <text x="104" y="67">한결공원</text>
-      <text x="283" y="61">여유마을</text>
-      <text x="286" y="311">느린숲</text>
+      <text x="283" y="61">주거 구역</text>
+      <text x="286" y="311">중앙공원</text>
       <text x="418" y="257">산책길</text>
     </g>
   `;
@@ -79,10 +79,10 @@ function renderMapCaption(home) {
   return `
     <div class="map-overlay">
       <div>
-        <strong>좋은 이동은, 여유에서 시작해요</strong>
-        <p>목적지와 약속 시간을 연결해 볼까요?</p>
+        <strong>현재 위치 (예시)</strong>
+        <p>목적지를 선택하면 예시 경로가 표시됩니다.</p>
       </div>
-      <span class="map-pin-note">${icon("leaf", 25)}</span>
+      <span class="map-pin-note">${icon("pin", 22)}</span>
     </div>
   `;
 }
@@ -94,7 +94,7 @@ export function renderMap({
   progress = 0,
   destination = "병원",
 } = {}) {
-  const moving = companion && active;
+  const moving = false; // Manual demo updates only; no automatic map motion.
   const carX = 95 + Math.min(progress, 3) * 55;
   const description = active
     ? "차량과 목적지, 픽업 위치의 모의 표시"

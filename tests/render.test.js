@@ -89,3 +89,32 @@ test("official sources and simulation boundary are present in documentation draw
   assert.match(html, /document\.pleos\.ai/);
   assert.match(html, /target="_blank" rel="noopener noreferrer"/);
 });
+
+test("functional Korean headings replace marketing eyebrows in every screen", () => {
+  const initial = createInitialState();
+  const plan = step(initial, "SELECT_DEST", "hospital");
+  const active = step(plan, "START_TRIP");
+  const shared = step(step(active, "SET_SHARE_CONSENT", true), "START_SHARE");
+  const fixtures = [
+    initial,
+    plan,
+    active,
+    shared,
+    step(active, "ARRIVE"),
+    step(active, "END_TRIP"),
+  ];
+  for (const state of fixtures) {
+    for (const render of screenRenderers) {
+      const html = render(state);
+      assert.doesNotMatch(
+        html,
+        /class="eyebrow"|LESS RUSH|MORE ROOM|JOURNEY|COMPANION VIEW|도착할 때의 마음/,
+      );
+    }
+  }
+  assert.match(renderTrip(initial), /<h1>목적지<\/h1>/);
+  assert.match(renderTrip(plan), /<h1>이동 계획<\/h1>/);
+  assert.match(renderTrip(active), /<h1>이동 중<\/h1>/);
+  assert.match(renderSettings(initial), /<h1>설정<\/h1>/);
+  assert.doesNotMatch(renderCompanion(shared), /spin-car/);
+});

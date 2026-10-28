@@ -16,7 +16,7 @@ import { renderMap } from "../components/map.js";
 const PARKING_OPTIONS = [
   {
     id: "A",
-    name: "가까운 A",
+    name: "A 주차장",
     cost: "4,000",
     walk: "3",
     eta: "14:48",
@@ -24,7 +24,7 @@ const PARKING_OPTIONS = [
   },
   {
     id: "B",
-    name: "알뜰한 B",
+    name: "B 주차장",
     cost: "2,000",
     walk: "8",
     eta: "14:53",
@@ -53,11 +53,11 @@ function renderDestinationSelector(state) {
   return `
     <section class="panel">
       <div class="section-title">
-        <h2>어디로 갈까요?</h2>
+        <h2>목적지 선택</h2>
         ${tag("예시 목적지")}
       </div>
       <button class="search-button" data-action="TOGGLE_SEARCH">
-        <b>${icon("search", 18)} 목적지 선택하기</b>
+        <b>${icon("search", 18)} 목적지 선택</b>
         ${icon("chevron", 17)}
       </button>
       ${state.searchOpen ? notice("실제 검색 대신 아래 3개 예시 목적지를 선택해 주세요.") : ""}
@@ -70,14 +70,13 @@ function renderDestinationSelector(state) {
 
 function renderHomeIntroduction() {
   return `
-    <section class="panel dark intro-panel">
-      <p class="eyebrow">LESS RUSH. MORE ROOM.</p>
-      <h2>도착 시간만이 아닌,<br>도착할 때의 마음까지.</h2>
-      <p>주차부터 마지막 걸음까지 챙겨요.</p>
-      <span class="line-art">${icon("route", 55)}</span>
+    <section class="panel intro-panel">
+      <h2>이동 정보</h2>
+      <div class="feature-row"><span>도착 예상</span><strong>목적지 선택 후 확인</strong></div>
+      <div class="feature-row"><span>주차·도보</span><strong>이동 계획에서 비교</strong></div>
     </section>
     <div class="mini-note">
-      ${icon("shield", 15)} 목적지는 저장하지 않아요. 학습은 직접 켤 때만 시작돼요.
+      ${icon("shield", 15)} 장소 학습은 설정에서 동의 후 사용
     </div>
   `;
 }
@@ -88,8 +87,8 @@ function renderHomeCompanionCard() {
       <div class="person-line">
         <span class="icon-box">${icon("people", 21)}</span>
         <div>
-          <h3>누군가와 함께 가는 날에도</h3>
-          <p>내가 허용한 이동만, 필요한 순간에만 공유해요.</p>
+          <h3>동행 위치 공유</h3>
+          <p>이동을 시작한 뒤 동행 메뉴에서 공유를 설정하세요.</p>
         </div>
       </div>
     </section>
@@ -99,10 +98,10 @@ function renderHomeCompanionCard() {
 export function renderHome(state) {
   return `
     ${heading(
-      "A LITTLE ROOM, A BETTER JOURNEY",
-      "어디든, 여유롭게.",
-      "오늘의 목적지를 알려주세요. 나머지는 함께 생각할게요.",
-      '<span class="date-tag">수요일 · 좋은 오후예요</span>',
+      "",
+      "목적지",
+      "목적지 선택 후 도착 시간과 주차를 확인하세요.",
+      "",
     )}
     <div class="grid home-grid">
       <div class="stack">
@@ -156,7 +155,7 @@ function renderDeadline(state) {
         <label>도착해야 하는 시간이 있나요?</label>
         ${toggle(state.deadlineEnabled, "TOGGLE_DEADLINE", "약속 시간 사용")}
       </div>
-      ${state.deadlineEnabled ? renderDeadlineInput(state) : "<p>마감 시간 없이 편하게 이동해요.</p>"}
+      ${state.deadlineEnabled ? renderDeadlineInput(state) : "<p>약속 시간 없이 도착 예상만 확인합니다.</p>"}
     </section>
   `;
 }
@@ -181,7 +180,7 @@ export function renderParking(state) {
   return `
     <section class="panel scroll-target">
       <div class="panel-head">
-        <h2>마지막 걸음도, 내 기준으로</h2>
+        <h2>주차장 비교</h2>
         ${tag("주차 예시")}
       </div>
       <p class="subtext">1시간 주차 기준 · 실시간 요금 아님</p>
@@ -242,7 +241,7 @@ function renderCafePlan(state, summary) {
   return `
     <section class="panel">
       <div class="panel-head">
-        <h2>이동 사이, 작은 여유</h2>
+        <h2>카페 경유</h2>
         ${toggle(state.cafe, "TOGGLE_CAFE", "카페 경유 포함")}
       </div>
       <p class="subtext">${state.cafe ? "카페 온유에 잠깐 들러요." : "경유 없이 목적지로 바로 가요."}</p>
@@ -259,7 +258,7 @@ function renderPlan(state) {
     <button class="back-btn" data-action="BACK_HOME">
       ${icon("back", 15)} 목적지 다시 선택
     </button>
-    ${heading("YOUR NEXT JOURNEY", `${summary.destination.name}까지, 여유 있게.`, `${escapeHtml(summary.destination.address)} · 주소는 예시입니다.`)}
+    ${heading("", "이동 계획", `${escapeHtml(summary.destination.address)} · 주소는 예시입니다.`)}
     <div class="grid plan-grid">
       <div class="stack">
         ${renderPlanSummary(summary)}
@@ -295,8 +294,8 @@ function renderNextJourney(state, summary) {
   return `
     <section class="panel">
       <div class="panel-head">
-        <h2>다음 여정</h2>
-        ${tag(state.cafe ? "잠깐의 여유" : "바로 이동")}
+        <h2>이동 일정</h2>
+        ${tag(state.cafe ? "카페 경유" : "바로 이동")}
       </div>
       ${timeline(summary.timeline.slice(state.cafe ? 1 : 0))}
     </section>
@@ -315,7 +314,7 @@ function renderActiveCompanionCard(state) {
       <div class="person-line">
         <span class="icon-box">${icon("people")}</span>
         <div>
-          <h3>${state.share ? "민지와 함께 이동 중" : "혼자여도, 함께여도"}</h3>
+          <h3>${state.share ? "민지와 함께 이동 중" : "동행 위치 공유"}</h3>
           <p>${description}</p>
         </div>
       </div>
@@ -334,10 +333,10 @@ function renderActive(state) {
 
   return `
     ${heading(
-      "ON YOUR WAY",
-      `${summary.destination.name} 가는 길`,
-      `${state.cafe ? "카페 온유를 지나, " : ""}약속까지 한결 편안하게.`,
-      tag("이동 중인 데모", "mint"),
+      "",
+      "이동 중",
+      `${summary.destination.name}${state.cafe ? " · 카페 온유 경유" : " · 바로 이동"}`,
+      tag("모의 이동", "mint"),
     )}
     ${renderRouteReview(state)}
     <div class="grid plan-grid">
@@ -364,10 +363,10 @@ function renderActive(state) {
 
 function renderDrivingWithoutTrip() {
   return `
-    ${heading("FOCUS ON THE ROAD", "이동에 집중하는 시간", "목적지 선택은 정차 후에 할 수 있어요.")}
+    ${heading("", "이동 정보", "목적지 선택은 정차 후에 할 수 있어요.")}
     <section class="locked">
       ${icon("shield", 48)}
-      <h2>필요한 정보만, 간결하게.</h2>
+      <h2>진행 중인 이동이 없습니다</h2>
       <p>정차 상태에서 계획한 이동이 여기에 표시됩니다.</p>
       ${notice("상단의 ‘정차’로 전환해 예시 이동을 시작해 보세요.")}
     </section>
@@ -414,7 +413,7 @@ export function renderDriving(state) {
   const summary = getTripSummary(state);
 
   return `
-    ${heading("FOCUS ON THE ROAD", `${summary.destination.name} 가는 길`, "상세 설정은 정차 후에 확인할 수 있어요.")}
+    ${heading("", "이동 중", "상세 설정은 정차 후에 확인할 수 있어요.")}
     <div class="driving-layout">
       <section class="panel dark drive-hero">
         <div class="route-line">
@@ -456,10 +455,10 @@ function renderParkingConfirmation(state, summary) {
   return `
     <section class="panel">
       <div class="callout-icon">${icon("parking", 30)}</div>
-      <h2>${state.parkedConfirmed ? "주차를 기억해 둘게요" : "안전하게 주차하셨나요?"}</h2>
+      <h2>${state.parkedConfirmed ? "주차 확인 완료" : "안전하게 주차하셨나요?"}</h2>
       <p>${
         state.parkedConfirmed
-          ? "이동을 마치고, 마지막 걸음은 휴대폰에서 이어가세요."
+          ? "주차 위치와 도보 경로를 휴대폰 화면에서 확인하세요."
           : "차량이 완전히 멈춘 후 주차를 확인해 주세요. 자동 감지로 처리하지 않아요."
       }</p>
       <div class="divider"></div>
@@ -478,7 +477,7 @@ function renderArrival(state) {
   const summary = getTripSummary(state);
 
   return `
-    ${heading("A LITTLE ROOM TO ARRIVE", "여유 있게 도착했어요.", `${summary.destination.name} · 차량 도착 ${summary.vehicleArrival} (예시)`)}
+    ${heading("", "도착", `${summary.destination.name} · 차량 도착 ${summary.vehicleArrival} (예시)`)}
     ${renderRouteReview(state)}
     <div class="grid">
       ${renderParkingConfirmation(state, summary)}
@@ -492,9 +491,9 @@ function renderArrival(state) {
 
 function renderCompletedTrip() {
   return `
-    ${heading("JOURNEY COMPLETE", "오늘의 이동도, 여유롭게.")}
+    ${heading("", "이동 완료")}
     <section class="panel empty-state">
-      <span class="icon-box">${icon("leaf", 35)}</span>
+      <span class="icon-box">${icon("check", 35)}</span>
       <h2>이동을 마쳤어요</h2>
       <p>동행 공유도 함께 종료했어요.<br>새로운 이동은 목적지 선택부터 시작할 수 있어요.</p>
       ${button("새 이동 시작", "BACK_HOME", { kind: "primary", icon: "arrow" })}

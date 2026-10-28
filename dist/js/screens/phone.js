@@ -24,8 +24,8 @@ function renderWalkingSummary(state, summary) {
   const parked = state.parkedConfirmed;
   return `
     <section class="panel dark">
-      <p class="eyebrow">${parked ? "THE LAST FEW STEPS" : "A LITTLE BREAK"}</p>
-      <h2>${parked ? `${summary.destination.name}까지, 도보 ${summary.walkMinutes}분` : "커피 한 잔의 여유를 즐겨요"}</h2>
+      <p class="section-label">${parked ? "도보 안내" : "경유지 일정"}</p>
+      <h2>${parked ? `${summary.destination.name}까지, 도보 ${summary.walkMinutes}분` : "카페 온유 경유 중"}</h2>
       <p>${parked ? `${summary.parkingName}에 주차했어요 (예시).` : "14:10에 돌아오면 14:15에 출발할 수 있어요."}</p>
     </section>
   `;
@@ -35,13 +35,13 @@ function renderReturnReminder(state) {
   return `
     <section class="panel">
       <div class="panel-head">
-        <h3>복귀 리마인더</h3>
+        <h3>복귀 알림</h3>
         ${tag(state.phoneReminder ? "모의 확인됨" : "미설정", state.phoneReminder ? "mint" : "gray")}
       </div>
       <div class="feature-row"><span>돌아올 시간</span><strong>14:10</strong></div>
       <p class="tiny mt">이 브라우저에서 확인만 해요. OS 알림·푸시는 전송하지 않아요.</p>
       ${button(
-        state.phoneReminder ? "리마인더 끄기" : "모의 리마인더 확인",
+        state.phoneReminder ? "복귀 알림 끄기" : "모의 복귀 알림 확인",
         "SET_REMINDER",
         {
           value: String(!state.phoneReminder),
@@ -95,7 +95,7 @@ export function renderPhone(state) {
   const summary = getTripSummary(state);
   const hasActiveTrip = ["active", "arrival"].includes(state.stage);
   return `
-    ${heading("DRIVER’S PHONE", "차에서 내려도, 여유롭게.", "운전자 휴대폰 화면 · 실제 알림 전송 없이 흐름만 체험해요.")}
+    ${heading("", "복귀 알림", "운전자 휴대폰 화면 · 실제 알림 전송 없이 흐름만 체험해요.")}
     <div class="phone-layout">
       <div class="phone-status">
         <span>${icon("phone", 15)} 나의 휴대폰</span>

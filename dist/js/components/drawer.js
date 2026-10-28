@@ -13,7 +13,7 @@ const SDK_STATUS_ROWS = [
 function renderDesignPrinciples() {
   return `
     <section>
-      <h3>운전자의 여유를 지키는 구조</h3>
+      <h3>화면 구성과 주행 제한</h3>
       <ul>
         <li>Driving view는 차량 OS 영역. 이 프로토타입은 앱 영역만 표현합니다.</li>
         <li>앱 내 탐색은 하단 한 곳. 넓은 창은 2개 영역, 작은 창은 핵심 정보 1개 영역으로 전환합니다.</li>

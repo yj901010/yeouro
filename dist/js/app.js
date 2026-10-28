@@ -17,9 +17,9 @@ let routeReviewWasVisible = false;
 
 const NAV_ITEMS = [
   ["trip", "route", "이번 이동"],
-  ["together", "people", "함께 이동"],
+  ["together", "people", "동행"],
   ["places", "pin", "장소 기록"],
-  ["more", "more", "더보기"],
+  ["more", "settings", "설정"],
 ];
 const VIEW_ITEMS = [
   ["car", "car", "차량"],
@@ -55,10 +55,10 @@ function renderWorkspaceToolbar(state) {
     <header class="workbar">
       <div class="wordmark">
         <span class="logo">${icon("route", 23)}</span>여유로
-        <small>UI PROTOTYPE · 가칭</small>
+        <small>프로토타입</small>
       </div>
       <div class="workspace-actions">
-        <span class="demo-badge">INTERACTIVE DEMO</span>
+
         <button class="small-btn" data-action="SET_NIGHT" aria-label="${state.night ? "주간" : "야간"} 테마로 변경">
           ${icon(state.night ? "sun" : "moon", 14)}${state.night ? "주간" : "야간"}
         </button>
@@ -131,7 +131,7 @@ function renderHeader(state) {
     <header class="app-header">
       <div class="app-brand">
         <span class="symbol">${icon("route", 23)}</span>
-        <strong>여유로</strong><span class="subtitle">이동에 여유를</span>
+        <strong>여유로</strong>
       </div>
       <div class="header-right">
         <span>${viewLabel}</span>
@@ -173,7 +173,7 @@ function renderWorkspace(state) {
       </div>
       <footer class="workspace-foot">
         <span>모든 장소·시간·차량 상태는 예시입니다. 실제 위치·차량·알림에 연결되지 않습니다.</span>
-        <span class="number">PLEOS CONCEPT · 01</span>
+
       </footer>
     </div>
     ${state.drawer ? renderDrawer() : ""}

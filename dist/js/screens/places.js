@@ -32,7 +32,7 @@ function renderHospitalPlace(state) {
         <h2>한결병원</h2>
         ${tag(state.verified ? "사용자 확인 · 예시" : "확인 필요", state.verified ? "mint" : "amber")}
       </div>
-      <p>이동을 준비할 때 도움이 되는 장소 메모</p>
+      <p>출입구와 주차 정보</p>
       <div class="divider"></div>
       <div class="feature-row">
         <div>
@@ -55,7 +55,7 @@ function renderCafePlace() {
     <section class="panel place-card">
       <div class="place-art">${icon("coffee", 50)}</div>
       <div class="panel-head"><h2>카페 온유</h2>${tag("예시 장소")}</div>
-      <p>잠깐 들르기 좋은 나만의 쉼표</p>
+      <p>도보 시간과 영업 정보</p>
       <div class="divider"></div>
       <div class="feature-row">
         <div><h3>차에서 카페까지</h3><p>도보 3분 · 비교용 예시</p></div>
@@ -72,7 +72,7 @@ function renderCafePlace() {
 
 export function renderPlaces(state) {
   return `
-    ${heading("YOUR PLACES", "익숙한 곳도, 조금 더 편하게.", "확인한 정보와 아직 모르는 정보를 분리해요.")}
+    ${heading("", "장소 기록", "저장된 장소의 도보 시간과 확인 정보를 봅니다.")}
     ${
       !state.learning
         ? `
