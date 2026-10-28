@@ -5,3 +5,17 @@ coverage/
 .env
 .env.*
 .openai/
+.gradle/
+**/build/
+**/target/
+**/local.properties
+**/.idea/
+*.iml
+*.log
+*.h2.db
+*.mv.db
+*.trace.db
+.android-sdk/
+.tools/
+*.apk
+*.aab

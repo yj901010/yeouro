@@ -1,0 +1,7 @@
+# Requires a private PostgreSQL service and external TLS termination. Not deployed.
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
